@@ -16,24 +16,16 @@ import NotFound from "./pages/NotFound";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLoads from "./pages/driver/DriverLoads";
 import DriverTrucks from "./pages/driver/DriverTrucks";
-import DriverSubDrivers from "./pages/driver/DriverSubDrivers";
-import DriverHistory from "./pages/driver/DriverHistory";
 import DriverAccount from "./pages/driver/DriverAccount";
+import DriverTasks from "./pages/shipper/ShipperLoads"; // نستخدم نفس المكون للتحكم بالسحب
 
 // Shipper Pages
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
 import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
-import ShipperLoads from "./pages/shipper/ShipperLoads";
+import ShipperDrivers from "./pages/shipper/ShipperDrivers";
+import ShipperHistory from "./pages/shipper/ShipperHistory"; // الصفحة الجديدة
 import ShipperTrack from "./pages/shipper/ShipperTrack";
 import ShipperAccount from "./pages/shipper/ShipperAccount";
-import ShipperDrivers from "./pages/shipper/ShipperDrivers"; // الصفحة الجديدة
-
-// Admin Pages
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminLoads from "./pages/admin/AdminLoads";
-import AdminTickets from "./pages/admin/AdminTickets";
-import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -55,28 +47,20 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             <Route element={<ProtectedRoute />}>
-              {/* Driver Routes */}
+              {/* Driver */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
+              <Route path="/driver/tasks" element={<DriverTasks />} />
               <Route path="/driver/trucks" element={<DriverTrucks />} />
-              <Route path="/driver/sub-drivers" element={<DriverSubDrivers />} />
-              <Route path="/driver/history" element={<DriverHistory />} />
               <Route path="/driver/account" element={<DriverAccount />} />
 
-              {/* Shipper Routes */}
+              {/* Shipper */}
               <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
               <Route path="/shipper/post" element={<ShipperPostLoad />} />
-              <Route path="/shipper/loads" element={<ShipperLoads />} />
-              <Route path="/shipper/drivers" element={<ShipperDrivers />} /> {/* المسار الجديد */}
+              <Route path="/shipper/drivers" element={<ShipperDrivers />} />
+              <Route path="/shipper/history" element={<ShipperHistory />} />
               <Route path="/shipper/track" element={<ShipperTrack />} />
               <Route path="/shipper/account" element={<ShipperAccount />} />
-
-              {/* Admin Routes */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/loads" element={<AdminLoads />} />
-              <Route path="/admin/tickets" element={<AdminTickets />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
