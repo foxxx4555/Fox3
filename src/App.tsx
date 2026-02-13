@@ -26,6 +26,7 @@ import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
 import ShipperLoads from "./pages/shipper/ShipperLoads";
 import ShipperTrack from "./pages/shipper/ShipperTrack";
 import ShipperAccount from "./pages/shipper/ShipperAccount";
+import ShipperDrivers from "./pages/shipper/ShipperDrivers"; // الصفحة الجديدة
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -34,14 +35,7 @@ import AdminLoads from "./pages/admin/AdminLoads";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminSettings from "./pages/admin/AdminSettings";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
@@ -52,19 +46,16 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Sonner position="top-center" expand={false} richColors />
+        <Sonner position="top-center" richColors />
         <BrowserRouter>
           <Routes>
-            {/* Public Routes */}
             <Route path="/" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
-
-              {/* Driver */}
+              {/* Driver Routes */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
               <Route path="/driver/trucks" element={<DriverTrucks />} />
@@ -72,23 +63,22 @@ const App = () => {
               <Route path="/driver/history" element={<DriverHistory />} />
               <Route path="/driver/account" element={<DriverAccount />} />
 
-              {/* Shipper */}
+              {/* Shipper Routes */}
               <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
               <Route path="/shipper/post" element={<ShipperPostLoad />} />
               <Route path="/shipper/loads" element={<ShipperLoads />} />
+              <Route path="/shipper/drivers" element={<ShipperDrivers />} /> {/* المسار الجديد */}
               <Route path="/shipper/track" element={<ShipperTrack />} />
               <Route path="/shipper/account" element={<ShipperAccount />} />
 
-              {/* Admin */}
+              {/* Admin Routes */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/loads" element={<AdminLoads />} />
               <Route path="/admin/tickets" element={<AdminTickets />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
-
             </Route>
 
-            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
