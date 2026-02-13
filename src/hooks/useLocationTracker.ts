@@ -3,43 +3,41 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
 export function useLocationTracker() {
-  const { userProfile } = useAuth();
+  const { userProfile, currentRole } = useAuth();
 
   useEffect(() => {
+    // التتبع يعمل فقط إذا كان المستخدم "سائق"
+    if (currentRole !== 'driver' || !userProfile?.id) return;
+
     let watchId: number | null = null;
 
-    const updateLocation = (position: GeolocationPosition) => {
-      if (!userProfile?.id) return;
-      
+    const updateLocation = async (position: GeolocationPosition) => {
       const { latitude, longitude } = position.coords;
       
-      supabase
+      await supabase
         .from('profiles')
-        .update({ latitude, longitude, last_seen_at: new Date().toISOString() })
-        .eq('id', userProfile.id)
-        .then(({ error }) => {
-          if (error) console.error("Error updating location:", error);
-        });
+        .update({ 
+          latitude, 
+          longitude, 
+          last_seen_at: new Date().toISOString() 
+        })
+        .eq('id', userProfile.id);
     };
 
     const handleError = (error: GeolocationPositionError) => {
-      console.error("Geolocation Error:", error.message);
+      console.error("GPS Error:", error.message);
     };
 
-    // طلب صلاحية الـ GPS والبدء في المراقبة
-    if (navigator.geolocation && userProfile) {
+    if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
+        timeout: 10000,
+        maximumAge: 5000,
       });
     }
 
-    // إيقاف المراقبة عند إغلاق المكون
     return () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-      }
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [userProfile]);
+  }, [userProfile, currentRole]);
 }
