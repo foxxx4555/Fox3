@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserProfile, Load, AdminStats, UserRole } from '@/types';
 
 export const api = {
-  // Auth
+  // --- قسم المصادقة (Auth) ---
   async registerUser(email: string, password: string, metadata: { full_name: string; phone: string; role: UserRole }) {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -43,11 +43,6 @@ export const api = {
     return { session: data.session, user: data.user, role: 'admin' as UserRole };
   },
 
-  async forgotPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' });
-    if (error) throw error;
-  },
-
   async logout() {
     await supabase.auth.signOut();
   },
@@ -57,7 +52,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // Driver & Trucks
+  // --- قسم السائقين والشاحنات ---
   async addTruck(truckData: any, userId: string) {
     const { error } = await supabase.from('trucks').insert([{
       owner_id: userId, plate_number: truckData.plate_number, brand: truckData.brand,
@@ -77,50 +72,67 @@ export const api = {
     if (error) throw error;
   },
 
-  async addSubDriver(driverData: any, carrierId: string) {
-    const { error } = await supabase.from('sub_drivers').insert([{
-      carrier_id: carrierId, driver_name: driverData.driver_name,
-      driver_phone: driverData.driver_phone, id_number: driverData.id_number,
-      license_number: driverData.license_number,
-    }]);
-    if (error) throw error;
-  },
-
   async getSubDrivers(carrierId: string) {
     const { data, error } = await supabase.from('sub_drivers').select('*').eq('carrier_id', carrierId).order('created_at', { ascending: false });
     if (error) throw error;
     return data;
   },
 
-  async deleteSubDriver(id: string) {
-    const { error } = await supabase.from('sub_drivers').delete().eq('id', id);
-    if (error) throw error;
-  },
-
-  // Loads
+  // --- قسم الشحنات (Loads) ---
+  
+  // دالة نشر الشحنة (تأكد أن الـ status دائماً available)
   async postLoad(loadData: any, userId: string) {
     const { error } = await supabase.from('loads').insert([{
-      owner_id: userId, origin: loadData.origin, destination: loadData.destination,
-      weight: parseFloat(loadData.weight) || 0, price: parseFloat(loadData.price) || 0,
-      truck_size: loadData.truck_size, body_type: loadData.body_type,
-      description: loadData.description || '', type: loadData.type || 'general',
-      package_type: loadData.package_type, pickup_date: loadData.pickup_date,
-      receiver_name: loadData.receiver_name, receiver_phone: loadData.receiver_phone,
-      receiver_address: loadData.receiver_address, status: 'available',
-      origin_lat: loadData.origin_lat, origin_lng: loadData.origin_lng,
-      dest_lat: loadData.dest_lat, dest_lng: loadData.dest_lng, distance: loadData.distance || 0
+      owner_id: userId, 
+      origin: loadData.origin, 
+      destination: loadData.destination,
+      weight: parseFloat(loadData.weight) || 0, 
+      price: parseFloat(loadData.price) || 0,
+      truck_size: loadData.truck_size, 
+      body_type: loadData.body_type,
+      description: loadData.description || '', 
+      type: loadData.type || 'general',
+      package_type: loadData.package_type, 
+      pickup_date: loadData.pickup_date,
+      receiver_name: loadData.receiver_name, 
+      receiver_phone: loadData.receiver_phone,
+      receiver_address: loadData.receiver_address, 
+      status: 'available', // تأكيد الحالة هنا
+      origin_lat: loadData.origin_lat, 
+      origin_lng: loadData.origin_lng,
+      dest_lat: loadData.dest_lat, 
+      dest_lng: loadData.dest_lng, 
+      distance: loadData.distance || 0
     }]);
     if (error) throw error;
   },
 
+  // الدالة التي جرى فيها التعديل (جلب الشحنات المتاحة)
   async getAvailableLoads() {
-    const { data, error } = await supabase.from('loads').select('*, profiles(full_name)').eq('status', 'available').order('created_at', { ascending: false });
-    if (error) throw error;
+    console.log("جاري محاولة جلب الشحنات...");
+    
+    // سحب البيانات ببساطة بدون ربط معقدProfiles مبدئياً
+    const { data, error } = await supabase
+      .from('loads')
+      .select('*') 
+      .eq('status', 'available')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("خطأ من Supabase:", error.message);
+      throw error;
+    }
+
+    console.log("عدد الشحنات التي وجدت:", data?.length);
     return data;
   },
 
   async getUserLoads(userId: string) {
-    const { data, error } = await supabase.from('loads').select('*').or(`owner_id.eq.${userId},driver_id.eq.${userId}`).order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('loads')
+      .select('*')
+      .or(`owner_id.eq.${userId},driver_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return data;
   },
@@ -130,24 +142,7 @@ export const api = {
     if (error) throw error;
   },
 
-  async submitBid(loadId: string, driverId: string, price: number, message?: string) {
-    const { error } = await supabase.from('load_bids').insert([{ load_id: loadId, driver_id: driverId, price, message }]);
-    if (error) throw error;
-  },
-
-  // Stats
-  async getDriverStats(userId: string) {
-    const { count: active } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('driver_id', userId).eq('status', 'in_progress');
-    const { count: completed } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('driver_id', userId).eq('status', 'completed');
-    return { activeLoads: active || 0, completedTrips: completed || 0, rating: 4.8 };
-  },
-
-  async getShipperStats(userId: string) {
-    const { count: active } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('owner_id', userId).in('status', ['available', 'in_progress']);
-    const { count: completed } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('owner_id', userId).eq('status', 'completed');
-    return { activeLoads: active || 0, completedTrips: completed || 0 };
-  },
-
+  // --- قسم الإحصائيات للإدارة ---
   async getAdminStats(): Promise<AdminStats> {
     const { count: users } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
     const { count: drivers } = await supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'driver');
@@ -155,19 +150,13 @@ export const api = {
     const { count: activeLoads } = await supabase.from('loads').select('*', { count: 'exact', head: true }).in('status', ['available', 'in_progress']);
     const { count: completed } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('status', 'completed');
 
-    return { totalUsers: users || 0, totalDrivers: drivers || 0, totalShippers: shippers || 0, activeLoads: activeLoads || 0, completedTrips: completed || 0 };
-  },
-
-  async getAllUsers() {
-    const { data, error } = await supabase.from('profiles').select('*, user_roles(role)').order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
-  },
-
-  async getAllLoads() {
-    const { data, error } = await supabase.from('loads').select('*').order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
+    return { 
+      totalUsers: users || 0, 
+      totalDrivers: drivers || 0, 
+      totalShippers: shippers || 0, 
+      activeLoads: activeLoads || 0, 
+      completedTrips: completed || 0 
+    };
   },
 
   async getTickets() {
