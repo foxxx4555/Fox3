@@ -97,7 +97,6 @@ export default function ShipperPostLoad() {
     e.preventDefault();
     if (!userProfile?.id) return;
 
-    // Strict validation
     if (!form.origin || !form.destination || !form.weight || !form.price || !form.package_type || !form.pickup_date || !form.receiver_name || !form.receiver_phone) {
       toast.error('يرجى إكمال جميع الحقول الإجبارية');
       return;
@@ -158,41 +157,40 @@ export default function ShipperPostLoad() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto pb-20">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl font-black tracking-tight">{t('post_load')}</h1>
-            <p className="text-muted-foreground font-medium text-lg">أدخل جميع تفاصيل شحنتك لنشرها في النظام فوراً</p>
-          </div>
-
-          <Card className="rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border-none overflow-hidden bg-white">
-            <CardHeader className="bg-slate-950 text-white p-10 pb-16">
-              <CardTitle className="text-2x font-black flex items-center gap-3">
-                <Package className="text-primary" size={32} /> {t('details')} الشحنة
-              </CardTitle>
-              <CardDescription className="text-slate-400 font-bold text-base mt-2">يرجى ملاحظة أن جميع الحقول التي تحتوي على (*) هي حقول إجبارية</CardDescription>
+      <div className="max-w-4xl mx-auto pb-20 pt-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          
+          <Card className="rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border-none overflow-hidden bg-white">
+            <CardHeader className="bg-[#0f172a] text-white p-8 pb-14 text-center">
+              <div className="flex justify-center mb-4">
+                 <Package className="text-blue-400" size={32} />
+              </div>
+              <CardTitle className="text-2xl font-black mb-2">التفاصيل الشحنة</CardTitle>
+              <CardDescription className="text-slate-400 font-medium">يرجى ملاحظة أن جميع الحقول التي تحتوي على (*) هي حقول إجبارية</CardDescription>
             </CardHeader>
 
-            <CardContent className="p-10 -mt-10 bg-white rounded-[3rem] relative z-10 border-t">
-              <form onSubmit={handleSubmit} className="space-y-10">
+            <CardContent className="p-8 -mt-10 bg-white rounded-[3rem] relative z-10">
+              <form onSubmit={handleSubmit} className="space-y-12">
+                
+                {/* Section 1: Route */}
                 <section className="space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-2 text-slate-800">
-                    <div className="w-1.5 h-6 bg-primary rounded-full" />
-                    مسار الرحلة <span className="text-primary">*</span>
+                  <h3 className="text-lg font-black flex items-center gap-3 text-slate-800">
+                    <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                    مسار الرحلة <span className="text-blue-500">*</span>
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-muted/40 rounded-[2rem] border-2 border-dashed border-border/60">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-[2rem] border-2 border-slate-50 bg-slate-50/30">
                     <div className="space-y-3">
-                      <Label className="text-sm font-black uppercase tracking-wider ms-1">موقع التحميل (من) *</Label>
+                      <Label className="text-xs font-black uppercase tracking-wider ms-1 text-slate-500">موقع التحميل (من) *</Label>
                       <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full h-14 rounded-2xl justify-between border-2 bg-white hover:bg-white hover:border-primary transition-all text-lg font-bold">
-                            {form.origin ? <span className="flex items-center gap-2"><MapPin size={18} className="text-primary" /> {form.origin}</span> : "اختر مدينة التحميل"}
-                            <ChevronsUpDown className="opacity-50" size={18} />
+                          <Button variant="outline" className="w-full h-14 rounded-2xl justify-between border-2 bg-white hover:border-blue-400 transition-all font-bold">
+                            {form.origin ? <span className="flex items-center gap-2">{form.origin}</span> : "اختر مدينة التحميل"}
+                            <ChevronsUpDown className="opacity-30" size={16} />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[300px] p-0 rounded-2xl shadow-2xl">
                           <Command className="rounded-2xl">
-                            <CommandInput placeholder="ابحث عن مدينة..." className="h-14 font-bold" />
+                            <CommandInput placeholder="ابحث عن مدينة..." className="h-12 font-bold" />
                             <CommandList>
                               <CommandEmpty>لم يتم العثور على المدينة</CommandEmpty>
                               <CommandGroup>
@@ -206,7 +204,7 @@ export default function ShipperPostLoad() {
                                     }}
                                     className="h-12 font-bold cursor-pointer"
                                   >
-                                    <Check className={cn("me-3 h-5 w-5 text-primary", form.origin === city.label ? "opacity-100" : "opacity-0")} />
+                                    <Check className={cn("me-3 h-5 w-5 text-blue-500", form.origin === city.label ? "opacity-100" : "opacity-0")} />
                                     {city.label}
                                   </CommandItem>
                                 ))}
@@ -218,17 +216,17 @@ export default function ShipperPostLoad() {
                     </div>
 
                     <div className="space-y-3">
-                      <Label className="text-sm font-black uppercase tracking-wider ms-1">موقع التسليم (إلى) *</Label>
+                      <Label className="text-xs font-black uppercase tracking-wider ms-1 text-slate-500">موقع التسليم (إلى) *</Label>
                       <Popover open={openDest} onOpenChange={setOpenDest}>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full h-14 rounded-2xl justify-between border-2 bg-white hover:bg-white hover:border-accent transition-all text-lg font-bold">
-                            {form.destination ? <span className="flex items-center gap-2"><MapPin size={18} className="text-accent" /> {form.destination}</span> : "اختر مدينة التسليم"}
-                            <ChevronsUpDown className="opacity-50" size={18} />
+                          <Button variant="outline" className="w-full h-14 rounded-2xl justify-between border-2 bg-white hover:border-blue-400 transition-all font-bold">
+                            {form.destination ? <span className="flex items-center gap-2">{form.destination}</span> : "اختر مدينة التسليم"}
+                            <ChevronsUpDown className="opacity-30" size={16} />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[300px] p-0 rounded-2xl shadow-2xl">
                           <Command className="rounded-2xl">
-                            <CommandInput placeholder="ابحث عن مدينة..." className="h-14 font-bold" />
+                            <CommandInput placeholder="ابحث عن مدينة..." className="h-12 font-bold" />
                             <CommandList>
                               <CommandEmpty>لم يتم العثور على المدينة</CommandEmpty>
                               <CommandGroup>
@@ -242,7 +240,7 @@ export default function ShipperPostLoad() {
                                     }}
                                     className="h-12 font-bold cursor-pointer"
                                   >
-                                    <Check className={cn("me-3 h-5 w-5 text-accent", form.destination === city.label ? "opacity-100" : "opacity-0")} />
+                                    <Check className={cn("me-3 h-5 w-5 text-blue-500", form.destination === city.label ? "opacity-100" : "opacity-0")} />
                                     {city.label}
                                   </CommandItem>
                                 ))}
@@ -252,100 +250,94 @@ export default function ShipperPostLoad() {
                         </PopoverContent>
                       </Popover>
                     </div>
-
-                    {distance && (
-                      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="md:col-span-2 flex items-center justify-center gap-3 bg-primary/5 text-primary p-6 rounded-[1.5rem] border border-primary/10">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center"><Calculator size={24} /></div>
-                        <div className="text-center md:text-start">
-                          <p className="text-xs font-black uppercase tracking-widest opacity-60">المسافة التقديرية</p>
-                          <p className="text-3xl font-black">{distance} <span className="text-lg opacity-60">كم</span></p>
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
                 </section>
 
+                {/* Section 2: Specs */}
                 <section className="space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-2 text-slate-800">
-                    <div className="w-1.5 h-6 bg-accent rounded-full" />
+                  <h3 className="text-lg font-black flex items-center gap-3 text-slate-800">
+                    <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
                     مواصفات الشحنة
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1">{t('weight')} (طن) *</Label>
-                      <Input type="number" value={form.weight} onChange={set('weight')} className="h-14 rounded-2xl border-2 bg-muted/20 focus:bg-white font-bold text-lg px-6" placeholder="مثلاً: 25" required />
+                      <Label className="text-xs font-black uppercase ms-1 text-slate-500">{t('weight')} (طن) *</Label>
+                      <Input type="number" value={form.weight} onChange={set('weight')} className="h-14 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white font-bold text-base px-6" placeholder="مثلاً: 25" required />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1">{t('price')} (ر.س) *</Label>
-                      <Input type="number" value={form.price} onChange={set('price')} className="h-14 rounded-2xl border-2 bg-muted/20 focus:bg-white font-bold text-lg px-6" placeholder="مثلاً: 2500" required />
+                      <Label className="text-xs font-black uppercase ms-1 text-slate-500">{t('price')} (ر.س) *</Label>
+                      <Input type="number" value={form.price} onChange={set('price')} className="h-14 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white font-bold text-base px-6" placeholder="مثلاً: 2500" required />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1">نوع البضاعة (العبوة) *</Label>
-                      <Input value={form.package_type} onChange={set('package_type')} className="h-14 rounded-2xl border-2 bg-muted/20 focus:bg-white font-bold text-lg px-6" placeholder="طبالي، كراتين، حديد..." required />
+                      <Label className="text-xs font-black uppercase ms-1 text-slate-500">نوع البضاعة (العبوة) *</Label>
+                      <Input value={form.package_type} onChange={set('package_type')} className="h-14 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white font-bold text-base px-6" placeholder="طبالي، كراتين، حديد..." required />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1">نوع الشاحنة المطلوب *</Label>
+                      <Label className="text-xs font-black uppercase ms-1 text-slate-500">نوع الشاحنة المطلوب *</Label>
                       <Select value={form.body_type} onValueChange={(val) => setForm(p => ({ ...p, body_type: val }))}>
-                        <SelectTrigger className="h-14 rounded-2xl border-2 bg-muted/20 focus:bg-white font-bold text-lg px-6">
+                        <SelectTrigger className="h-14 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white font-bold text-base px-6">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl">
                           {bodyTypes.map(type => (
-                            <SelectItem key={type.value} value={type.value} className="h-12 font-bold">{type.label}</SelectItem>
+                            <SelectItem key={type.value} value={type.value} className="h-11 font-bold">{type.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1">{t('pickup_date')} *</Label>
+                    <div className="space-y-2 md:col-span-1">
+                      <Label className="text-xs font-black uppercase ms-1 text-slate-500">{t('pickup_date')} *</Label>
                       <div className="relative">
-                        <Calendar className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                        <Input type="date" value={form.pickup_date} onChange={set('pickup_date')} min={today} className="h-14 rounded-2xl border-2 bg-muted/20 focus:bg-white font-bold text-lg ps-14" required />
+                        <Input type="date" value={form.pickup_date} onChange={set('pickup_date')} min={today} className="h-14 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white font-bold text-base px-6 text-end" required />
+                        <Calendar className="absolute start-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
                       </div>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase ms-1">{t('description')} (اختياري)</Label>
-                    <Textarea value={form.description} onChange={set('description')} className="min-h-[120px] rounded-2xl border-2 bg-muted/20 focus:bg-white font-bold text-lg p-6" placeholder="أية تعليمات إضافية للناقل مثل وقت الوصول المفضل أو نوع الرافعة..." />
+                    <Label className="text-xs font-black uppercase ms-1 text-slate-500">{t('description')} (اختياري)</Label>
+                    <Textarea value={form.description} onChange={set('description')} className="min-h-[120px] rounded-[2rem] border-2 border-slate-100 bg-slate-50/50 focus:bg-white font-bold text-base p-6" placeholder="أية تعليمات إضافية للناقل مثل وقت الوصول المفضل أو نوع الرافعة..." />
                   </div>
                 </section>
 
+                {/* Section 3: Receiver */}
                 <section className="space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-2 text-slate-800">
+                  <h3 className="text-lg font-black flex items-center gap-3 text-slate-800">
                     <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
                     تفاصيل المستلم
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-emerald-50/30 rounded-[2rem] border-2 border-emerald-500/10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 p-8 bg-slate-50/30 rounded-[2.5rem] border-2 border-slate-100">
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1 flex items-center gap-1"><User size={14} /> {t('receiver_name')} *</Label>
-                      <Input value={form.receiver_name} onChange={set('receiver_name')} className="h-14 rounded-2xl border-white bg-white shadow-sm font-bold px-6" placeholder="اسم الشخص أو المؤسسة" required />
+                      <Label className="text-xs font-black uppercase ms-1 flex items-center gap-1 text-slate-500"><User size={14} className="opacity-40" /> {t('receiver_name')} *</Label>
+                      <Input value={form.receiver_name} onChange={set('receiver_name')} className="h-14 rounded-2xl border-none shadow-sm font-bold px-6 bg-white" placeholder="اسم الشخص أو المؤسسة" required />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase ms-1 flex items-center gap-1"><Phone size={14} /> {t('receiver_phone')} *</Label>
-                      <Input value={form.receiver_phone} onChange={set('receiver_phone')} className="h-14 rounded-2xl border-white bg-white shadow-sm font-bold px-6" placeholder="05xxxxxxxx" dir="ltr" required />
+                      <Label className="text-xs font-black uppercase ms-1 flex items-center gap-1 text-slate-500"><Phone size={14} className="opacity-40" /> {t('receiver_phone')} *</Label>
+                      <Input value={form.receiver_phone} onChange={set('receiver_phone')} className="h-14 rounded-2xl border-none shadow-sm font-bold px-6 bg-white" placeholder="05xxxxxxxx" dir="ltr" required />
                       <p className="text-[10px] text-slate-400 ms-1 font-bold">يجب أن يتكون من 10 أرقام ويبدأ بـ 05</p>
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label className="text-xs font-black uppercase ms-1 flex items-center gap-1"><MapPin size={14} /> {t('receiver_address')} (اختياري)</Label>
-                      <Input value={form.receiver_address} onChange={set('receiver_address')} className="h-14 rounded-2xl border-white bg-white shadow-sm font-bold px-6" placeholder="الحي، المعلم القريب، رقم المستودع أو اللوكيشن..." />
+                      <Label className="text-xs font-black uppercase ms-1 flex items-center gap-1 text-slate-500"><MapPin size={14} className="opacity-40" /> {t('receiver_address')} (اختياري)</Label>
+                      <Input value={form.receiver_address} onChange={set('receiver_address')} className="h-14 rounded-2xl border-none shadow-sm font-bold px-6 bg-white" placeholder="الحي، المعلم القريب، رقم المستودع أو اللوكيشن..." />
                     </div>
                   </div>
                 </section>
 
-                <div className="flex flex-col gap-6 pt-6">
-                  <div className="flex items-start gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                    <Info className="text-primary shrink-0 mt-1" />
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">بضغطك على زر "نشر الشحنة"، فإنك توافق على شروط وأحكام منصة SAS Transport، وسيتم إبلاغ جميع الناقلين المتاحين الذين يطابقون مواصفات شحنتك فوراً بمجرد الضغط.</p>
+                <div className="flex flex-col gap-6 pt-4">
+                  <div className="flex items-start gap-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
+                    <Info className="text-blue-500 shrink-0 mt-0.5" size={18} />
+                    <p className="text-xs font-bold text-slate-500 leading-relaxed">بضغطك على زر "نشر الشحنة"، فإنك توافق على شروط وأحكام منصة SAS Transport، وسيتم إبلاغ جميع الناقلين المتاحين الذين يطابقون مواصفات شحنتك فوراً بمجرد الضغط.</p>
                   </div>
                   <Button
                     type="submit"
                     className={cn(
-                      "w-full h-20 rounded-[1.5rem] text-2xl font-black transition-all shadow-2xl",
-                      isFormValid() ? "bg-primary hover:bg-primary/95 shadow-primary/20 hover:scale-[1.01] active:scale-[0.99]" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                      "w-full h-16 rounded-[1.5rem] text-xl font-black transition-all shadow-lg",
+                      isFormValid() 
+                        ? "bg-blue-600 hover:bg-blue-700 shadow-blue-200" 
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
                     )}
                     disabled={loading || !isFormValid()}
                   >
-                    {loading ? <Loader2 className="animate-spin me-3" size={28} /> : t('post_load')}
+                    {loading ? <Loader2 className="animate-spin" size={24} /> : "نشر شحنة"}
                   </Button>
                 </div>
               </form>
