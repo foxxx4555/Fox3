@@ -14,6 +14,8 @@ export interface UserProfile {
   avatar_url?: string;
   created_at: string;
   updated_at: string;
+  // إضافة لدعم استعلامات الربط
+  user_roles?: { role: UserRole }[];
 }
 
 export interface Load {
@@ -43,6 +45,19 @@ export interface Load {
   status: LoadStatus;
   created_at: string;
   updated_at: string;
+  
+  // --- التعديل هنا ليتناسب مع الـ API الجديد ---
+  owner?: {
+    full_name: string;
+    phone: string;
+    avatar_url?: string;
+  };
+  driver?: {
+    full_name: string;
+    phone: string;
+    avatar_url?: string;
+  };
+  // الحقل القديم (اختياري للإبقاء عليه)
   profiles?: { full_name: string; phone: string };
 }
 
@@ -98,20 +113,20 @@ export interface AdminStats {
   completedTrips: number;
 }
 
+// واجهات إضافية للمعلومات الوصفية
 export interface TruckTypeInfo { id: string; nameAr: string; icon: string; }
 export interface TrailerTypeInfo { id: string; nameAr: string; icon: string; }
 export interface DimensionInfo { id: string; nameAr: string; specs: string; }
 
+// واجهة السائق عند عرضه في قائمة "السائقين المتاحين"
 export interface Driver {
   id: string;
-  name: string;
+  full_name: string; // تم تغيير name إلى full_name ليتطابق مع قاعدة البيانات
   phone: string;
-  truckType: TruckType;
-  trailerType: string;
-  dimensions: string;
-  rating: number;
-  completedTrips: number;
-  isAvailable: boolean;
-  currentCity: string;
-  registrationDate: string;
+  avatar_url?: string;
+  truckType?: TruckType;
+  rating?: number;
+  completedTrips?: number;
+  isAvailable?: boolean;
+  currentCity?: string;
 }
