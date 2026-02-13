@@ -4,8 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Calendar, FileSearch, User, Phone, DollarSign } from 'lucide-react';
+import { Loader2, MapPin, Calendar, FileSearch, User, Phone, DollarSign, CheckCircle2, History } from 'lucide-react'; // ✅ تمت إضافة الأيقونات هنا
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function ShipperHistory() {
@@ -19,16 +18,20 @@ export default function ShipperHistory() {
       api.getUserLoads(userProfile.id).then(data => {
         // فلترة الشحنات المكتملة فقط للشاحن
         setLoads(data.filter((l: any) => l.status === 'completed'));
-      }).finally(() => setLoading(false));
+      }).catch(err => console.error(err))
+      .finally(() => setLoading(false));
     }
   }, [userProfile]);
 
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight">أرشيف الشحنات</h1>
-          <p className="text-muted-foreground font-medium mt-2">متابعة كافة العمليات التي تم تسليمها بنجاح</p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-2xl text-primary"><History size={32} /></div>
+          <div>
+            <h1 className="text-4xl font-black tracking-tight">سجل الشحنات</h1>
+            <p className="text-muted-foreground font-medium mt-1">أرشيف بكافة العمليات التي تم إنجازها</p>
+          </div>
         </div>
         
         {loading ? (
@@ -66,7 +69,7 @@ export default function ShipperHistory() {
                     </div>
                     <Button 
                       onClick={() => setSelectedLoad(load)}
-                      className="rounded-2xl h-14 px-8 font-black bg-slate-950 hover:bg-primary transition-all gap-2"
+                      className="rounded-2xl h-14 px-8 font-black bg-slate-950 hover:bg-primary transition-all gap-2 text-white"
                     >
                       <FileSearch size={20} /> تفاصيل العملية
                     </Button>
@@ -78,7 +81,7 @@ export default function ShipperHistory() {
         )}
 
         <Dialog open={!!selectedLoad} onOpenChange={() => setSelectedLoad(null)}>
-          <DialogContent className="max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none">
+          <DialogContent className="max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none bg-white">
             <DialogHeader className="p-8 bg-slate-950 text-white">
               <DialogTitle className="text-2xl font-black">ملخص الرحلة</DialogTitle>
               <DialogDescription className="text-slate-400 font-bold">تم إغلاق هذه الرحلة بنجاح وهي مخزنة في الأرشيف</DialogDescription>
@@ -102,7 +105,9 @@ export default function ShipperHistory() {
                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><User size={20}/></div>
                          <div><p className="text-xs font-bold text-muted-foreground">السائق المنفذ</p><p className="font-black">{selectedLoad.driver?.full_name || 'سائق خارجي'}</p></div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => window.location.href=`tel:${selectedLoad.driver?.phone}`} className="rounded-full h-10 w-10 bg-muted"><Phone size={18}/></Button>
+                      {selectedLoad.driver?.phone && (
+                        <Button variant="ghost" size="icon" onClick={() => window.location.href=`tel:${selectedLoad.driver.phone}`} className="rounded-full h-10 w-10 bg-muted"><Phone size={18}/></Button>
+                      )}
                    </div>
 
                    <div className="flex items-center justify-between p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
