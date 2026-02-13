@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { api } from '@/services/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Phone, User, Star, MapPin, Search, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner'; // للتنبيه في حال عدم وجود رقم
 
 export default function ShipperDrivers() {
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -28,6 +28,37 @@ export default function ShipperDrivers() {
     }
   };
 
+  // وظيفة الاتصال الهاتفي
+  const handleCall = (phoneNumber: string) => {
+    if (!phoneNumber) {
+      toast.error("رقم الهاتف غير مسجل لهذا السائق");
+      return;
+    }
+    window.location.href = `tel:${phoneNumber}`;
+  };
+
+  // وظيفة فتح الواتساب
+  const handleWhatsApp = (phoneNumber: string) => {
+    if (!phoneNumber) {
+      toast.error("رقم الهاتف غير مسجل لهذا السائق");
+      return;
+    }
+    
+    // تنظيف الرقم من المسافات أو الرموز
+    let cleanNumber = phoneNumber.replace(/\D/g, '');
+    
+    // تحويل الرقم لصيغة دولية (السعودية كمثال)
+    // إذا كان يبدأ بـ 05، نحوله إلى 9665
+    if (cleanNumber.startsWith('05')) {
+      cleanNumber = '966' + cleanNumber.substring(1);
+    } else if (cleanNumber.startsWith('5')) {
+      cleanNumber = '966' + cleanNumber;
+    }
+
+    const message = encodeURIComponent("السلام عليكم، هل أنت متاح لنقل شحنة؟");
+    window.open(`https://wa.me/${cleanNumber}?text=${message}`, '_blank');
+  };
+
   const filteredDrivers = drivers.filter(d => 
     d.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.phone?.includes(searchTerm)
@@ -39,7 +70,7 @@ export default function ShipperDrivers() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-4xl font-black tracking-tight">السائقين المسجلين</h1>
-            <p className="text-muted-foreground font-medium text-lg mt-1">قائمة بجميع السائقين المعتمدين في برنامجك</p>
+            <p className="text-muted-foreground font-medium text-lg mt-1">تواصل مع السائقين مباشرة عبر الهاتف أو واتساب</p>
           </div>
           <div className="relative w-full md:w-80">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
@@ -69,7 +100,7 @@ export default function ShipperDrivers() {
                 <Card className="rounded-[2.5rem] overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all group bg-white">
                   <CardContent className="p-8">
                     <div className="flex items-center gap-5 mb-8">
-                      <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary text-3xl font-black shadow-inner">
+                      <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary text-3xl font-black">
                         {driver.avatar_url ? (
                           <img src={driver.avatar_url} alt="" className="w-full h-full object-cover rounded-3xl" />
                         ) : driver.full_name?.charAt(0)}
@@ -79,7 +110,6 @@ export default function ShipperDrivers() {
                         <div className="flex items-center gap-1.5 text-amber-500 mt-1">
                           <Star size={16} fill="currentColor" />
                           <span className="text-sm font-black">4.9</span>
-                          <span className="text-xs font-bold text-muted-foreground ms-1">(120 رحلة)</span>
                         </div>
                       </div>
                     </div>
@@ -89,22 +119,29 @@ export default function ShipperDrivers() {
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-primary">
                           <Phone size={16} />
                         </div>
-                        <span dir="ltr">{driver.phone}</span>
+                        <span dir="ltr">{driver.phone || "لا يوجد رقم"}</span>
                       </div>
                       <div className="flex items-center gap-3 text-sm font-black text-slate-600">
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-accent">
                           <MapPin size={16} />
                         </div>
-                        <span>متاح الآن في الرياض</span>
+                        <span>متاح الآن</span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <Button className="h-12 rounded-xl font-bold bg-slate-900 hover:bg-primary transition-all gap-2">
+                      <Button 
+                        onClick={() => handleCall(driver.phone)}
+                        className="h-12 rounded-xl font-bold bg-slate-900 hover:bg-primary transition-all gap-2"
+                      >
                         <Phone size={18} /> اتصال
                       </Button>
-                      <Button variant="outline" className="h-12 rounded-xl font-bold border-2 gap-2">
-                        <MessageCircle size={18} /> رسالة
+                      <Button 
+                        onClick={() => handleWhatsApp(driver.phone)}
+                        variant="outline" 
+                        className="h-12 rounded-xl font-bold border-2 gap-2 text-emerald-600 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-200"
+                      >
+                        <MessageCircle size={18} /> واتساب
                       </Button>
                     </div>
                   </CardContent>
@@ -114,14 +151,8 @@ export default function ShipperDrivers() {
           </div>
         ) : (
           <div className="text-center py-24 bg-muted/20 rounded-[3rem] border-2 border-dashed border-border/50">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-              <User className="text-muted-foreground/30" size={40} />
-            </div>
-            <p className="text-xl font-black text-muted-foreground">لا يوجد سائقين مسجلين حالياً</p>
-            <p className="text-muted-foreground font-medium mt-2 px-6">بمجرد تسجيل سائقين جدد باستخدام رابط الدعوة الخاص بك سيظهرون هنا.</p>
-            <Button className="mt-8 rounded-xl h-12 px-8 font-bold" variant="outline">
-              نسخ رابط الدعوة
-            </Button>
+            <User className="mx-auto text-muted-foreground/30 mb-4" size={48} />
+            <p className="text-xl font-black text-muted-foreground">لا يوجد سائقين حالياً</p>
           </div>
         )}
       </div>
