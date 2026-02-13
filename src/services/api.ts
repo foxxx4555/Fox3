@@ -52,7 +52,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- الشاحنات والسائقين ---
+  // --- الشاحنات والسائقين (Trucks & Drivers) ---
   async addTruck(truckData: any, userId: string) {
     const { error } = await supabase.from('trucks').insert([{
       owner_id: userId, plate_number: truckData.plate_number, brand: truckData.brand,
@@ -70,6 +70,23 @@ export const api = {
   async deleteTruck(truckId: string) {
     const { error } = await supabase.from('trucks').delete().eq('id', truckId);
     if (error) throw error;
+  },
+
+  // دالة جديدة: جلب جميع السائقين المتاحين ليراهم صاحب الشحنة
+  async getAvailableDrivers() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        phone,
+        avatar_url,
+        user_roles!inner(role)
+      `)
+      .eq('user_roles.role', 'driver'); // فلترة لجلب السائقين فقط
+    
+    if (error) throw error;
+    return data;
   },
 
   async addSubDriver(driverData: any, carrierId: string) {
@@ -108,19 +125,37 @@ export const api = {
     if (error) throw error;
   },
 
+  // تعديل: جلب الشحنات المتاحة مع بيانات صاحب الشحنة (الاسم والهاتف)
   async getAvailableLoads() {
-    // تم تبسيط الدالة لضمان ظهور البيانات للسائق
     const { data, error } = await supabase
       .from('loads')
-      .select('*') 
+      .select(`
+        *,
+        owner:profiles!loads_owner_id_fkey (
+          full_name,
+          phone,
+          avatar_url
+        )
+      `) 
       .eq('status', 'available')
       .order('created_at', { ascending: false });
+    
     if (error) throw error;
     return data;
   },
 
+  // تعديل: جلب شحنات المستخدم مع تفاصيل الأطراف (صاحب الشحنة والسائق)
   async getUserLoads(userId: string) {
-    const { data, error } = await supabase.from('loads').select('*').or(`owner_id.eq.${userId},driver_id.eq.${userId}`).order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('loads')
+      .select(`
+        *,
+        owner:profiles!loads_owner_id_fkey(full_name, phone),
+        driver:profiles!loads_driver_id_fkey(full_name, phone)
+      `)
+      .or(`owner_id.eq.${userId},driver_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+    
     if (error) throw error;
     return data;
   },
@@ -135,7 +170,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- الإحصائيات (Stats) - تم استعادتها لفك التعليق ---
+  // --- الإحصائيات (Stats) ---
   async getDriverStats(userId: string) {
     const { count: active } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('driver_id', userId).eq('status', 'in_progress');
     const { count: completed } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('driver_id', userId).eq('status', 'completed');
@@ -158,7 +193,7 @@ export const api = {
     return { totalUsers: users || 0, totalDrivers: drivers || 0, totalShippers: shippers || 0, activeLoads: activeLoads || 0, completedTrips: completed || 0 };
   },
 
-  // --- الإدارة ---
+  // --- الإدارة (Admin) ---
   async getAllUsers() {
     const { data, error } = await supabase.from('profiles').select('*, user_roles(role)').order('created_at', { ascending: false });
     if (error) throw error;
@@ -166,7 +201,7 @@ export const api = {
   },
 
   async getAllLoads() {
-    const { data, error } = await supabase.from('loads').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('loads').select('*, owner:profiles!loads_owner_id_fkey(full_name)').order('created_at', { ascending: false });
     if (error) throw error;
     return data;
   },
