@@ -10,19 +10,10 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { MapPin, Weight, DollarSign, Loader2, Search } from 'lucide-react';
 import { Load } from '@/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-
 import { supabase } from '@/integrations/supabase/client';
-
-const statusColors: Record<string, string> = {
-  available: 'bg-accent/10 text-accent border-accent/20',
-  pending: 'bg-secondary/10 text-secondary border-secondary/20',
-  in_progress: 'bg-primary/10 text-primary border-primary/20',
-  completed: 'bg-accent/10 text-accent border-accent/20',
-  cancelled: 'bg-destructive/10 text-destructive border-destructive/20',
-};
 
 export default function DriverLoads() {
   const { t } = useTranslation();
@@ -39,30 +30,16 @@ export default function DriverLoads() {
     try {
       const data = await api.getAvailableLoads();
       setLoads(data as any as Load[]);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => {
     fetchLoads();
-
-    const channel = supabase
-      .channel('loads-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', table: 'loads', schema: 'public' },
-        () => {
-          fetchLoads();
-        }
-      )
+    const channel = supabase.channel('loads-changes')
+      .on('postgres_changes', { event: '*', table: 'loads', schema: 'public' }, () => fetchLoads())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const handleAccept = async (loadId: string) => {
@@ -71,9 +48,7 @@ export default function DriverLoads() {
       await api.acceptLoad(loadId, userProfile.id);
       toast.success(t('success'));
       fetchLoads();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const handleBid = async () => {
@@ -85,11 +60,8 @@ export default function DriverLoads() {
       setBidLoadId(null);
       setBidPrice('');
       setBidMsg('');
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (err: any) { toast.error(err.message); }
+    finally { setSubmitting(false); }
   };
 
   const filtered = loads.filter(l =>
@@ -102,42 +74,23 @@ export default function DriverLoads() {
       <div className="space-y-4">
         <div className="relative">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input
-            placeholder={t('search')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="ps-10"
-          />
+          <Input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} className="ps-10" />
         </div>
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={32} /></div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">{t('no_data')}</div>
         ) : (
           <div className="grid gap-4">
             {filtered.map(load => (
-              <Card key={load.id} className="hover:shadow-lg transition-shadow">
+              <Card key={load.id}>
                 <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className={statusColors[load.status]}>{t(load.status)}</Badge>
-                      {load.type && <span className="text-xs text-muted-foreground">{load.type}</span>}
-                    </div>
-                    <span className="text-sm text-muted-foreground">{new Date(load.created_at).toLocaleDateString('ar')}</span>
+                  <div className="flex justify-between items-start mb-3">
+                     <Badge variant="outline">{t(load.status)}</Badge>
+                     <span className="text-xs text-muted-foreground">{new Date(load.created_at).toLocaleDateString('ar')}</span>
                   </div>
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <MapPin size={16} className="text-accent shrink-0" />
-                    <span className="text-sm">{load.origin} → {load.destination}</span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center gap-1"><Weight size={14} /> {load.weight} طن</div>
-                    <div className="flex items-center gap-1"><DollarSign size={14} /> {load.price} ر.س</div>
-                    {load.profiles?.full_name && <span>المرسل: {load.profiles.full_name}</span>}
-                  </div>
-
+                  <div className="flex items-center gap-2 mb-2"><MapPin size={16} className="text-primary" /> {load.origin} → {load.destination}</div>
+                  <div className="flex gap-4 text-sm mb-4"><span className="flex items-center gap-1"><Weight size={14}/> {load.weight} طن</span><span className="flex items-center gap-1"><DollarSign size={14}/> {load.price} ر.س</span></div>
+                  
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleAccept(load.id)}>{t('accept_load')}</Button>
                     <Dialog open={bidLoadId === load.id} onOpenChange={open => !open && setBidLoadId(null)}>
@@ -145,16 +98,13 @@ export default function DriverLoads() {
                         <Button size="sm" variant="outline" onClick={() => setBidLoadId(load.id)}>{t('submit_bid')}</Button>
                       </DialogTrigger>
                       <DialogContent>
-                        <DialogHeader><DialogTitle>{t('submit_bid')}</DialogTitle></DialogHeader>
+                        <DialogHeader>
+                          <DialogTitle>{t('submit_bid')}</DialogTitle>
+                          <DialogDescription>أدخل السعر المقترح ورسالة لصاحب الشحنة لتقديم عرضك.</DialogDescription>
+                        </DialogHeader>
                         <div className="space-y-4">
-                          <div>
-                            <Label>{t('bid_price')}</Label>
-                            <Input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)} dir="ltr" className="mt-1" />
-                          </div>
-                          <div>
-                            <Label>{t('messages')}</Label>
-                            <Textarea value={bidMsg} onChange={e => setBidMsg(e.target.value)} className="mt-1" />
-                          </div>
+                          <div><Label>{t('bid_price')}</Label><Input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)} dir="ltr" className="mt-1" /></div>
+                          <div><Label>{t('messages')}</Label><Textarea value={bidMsg} onChange={e => setBidMsg(e.target.value)} className="mt-1" /></div>
                           <Button onClick={handleBid} disabled={submitting} className="w-full">
                             {submitting ? <Loader2 className="animate-spin" /> : t('submit')}
                           </Button>
