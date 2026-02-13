@@ -43,24 +43,24 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return Math.round(d);
+  return Math.round(R * c);
 }
 
 export default function ShipperPostLoad() {
   const { t } = useTranslation();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
+  const today = new Date().toISOString().split('T')[0];
+
   const [loading, setLoading] = useState(false);
   const [openOrigin, setOpenOrigin] = useState(false);
   const [openDest, setOpenDest] = useState(false);
   const [distance, setDistance] = useState<number | null>(null);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
     origin: '',
@@ -82,47 +82,17 @@ export default function ShipperPostLoad() {
 
   useEffect(() => {
     if (form.origin_obj && form.dest_obj) {
-      const dist = calculateDistance(
+      setDistance(calculateDistance(
         form.origin_obj.lat,
         form.origin_obj.lng,
         form.dest_obj.lat,
         form.dest_obj.lng
-      );
-      setDistance(dist);
-    } else {
-      setDistance(null);
-    }
+      ));
+    } else setDistance(null);
   }, [form.origin_obj, form.dest_obj]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userProfile?.id) return;
-
-    if (!isFormValid() || !agreeTerms) {
-      toast.error('يرجى إكمال جميع الحقول الإجبارية والموافقة على الشروط');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { origin_obj, dest_obj, ...apiPayload } = form;
-      const loadData = {
-        ...apiPayload,
-        distance: distance || 0,
-        origin_lat: origin_obj?.lat || null,
-        origin_lng: origin_obj?.lng || null,
-        dest_lat: dest_obj?.lat || null,
-        dest_lng: dest_obj?.lng || null,
-      };
-      await api.postLoad(loadData, userProfile.id);
-      toast.success(t('success'));
-      navigate('/shipper/loads', { replace: true });
-    } catch (err: any) {
-      toast.error(err.message || 'حدث خطأ أثناء نشر الشحنة');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [key]: e.target.value }));
 
   const isFormValid = () => {
     const phoneRegex = /^05\d{8}$/;
@@ -138,8 +108,33 @@ export default function ShipperPostLoad() {
     );
   };
 
-  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm(p => ({ ...p, [key]: e.target.value }));
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userProfile?.id) return;
+
+    if (!isFormValid() || !agreeTerms) {
+      toast.error('يرجى إكمال جميع الحقول الإجبارية والموافقة على الشروط');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { origin_obj, dest_obj, ...payload } = form;
+      const loadData = {
+        ...payload,
+        distance: distance || 0,
+        origin_lat: origin_obj?.lat || null,
+        origin_lng: origin_obj?.lng || null,
+        dest_lat: dest_obj?.lat || null,
+        dest_lng: dest_obj?.lng || null,
+      };
+      await api.postLoad(loadData, userProfile.id);
+      toast.success(t('success'));
+      navigate('/shipper/loads', { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ أثناء نشر الشحنة');
+    } finally { setLoading(false); }
+  };
 
   const bodyTypes = [
     { value: 'flatbed', label: t('flatbed') },
@@ -164,13 +159,18 @@ export default function ShipperPostLoad() {
               <CardTitle className="text-2x font-black flex items-center gap-3">
                 <Package className="text-primary" size={32} /> {t('details')} الشحنة
               </CardTitle>
-              <CardDescription className="text-slate-400 font-bold text-base mt-2">يرجى ملاحظة أن جميع الحقول التي تحتوي على (*) هي حقول إجبارية</CardDescription>
+              <CardDescription className="text-slate-400 font-bold text-base mt-2">
+                جميع الحقول التي تحتوي على (*) هي حقول إجبارية
+              </CardDescription>
             </CardHeader>
 
             <CardContent className="p-10 -mt-10 bg-white rounded-[3rem] relative z-10 border-t">
               <form onSubmit={handleSubmit} className="space-y-10">
-                {/* … نفس الفورم السابق مع المدن، مواصفات الشحنة، بيانات المستلم … */}
 
+                {/* هنا تضع كل الفورم مثل ما كان عندك: اختيار المدن، مواصفات الشحنة، بيانات المستلم ... */}
+                {/* يمكنك نسخ الفورم الأصلي بدون أي تعديل */}
+
+                {/* Checkbox للموافقة */}
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
@@ -184,6 +184,7 @@ export default function ShipperPostLoad() {
                   </label>
                 </div>
 
+                {/* زر النشر */}
                 <Button
                   type="submit"
                   className={cn(
