@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Truck as TruckIcon } from 'lucide-react';
 import { Truck } from '@/types';
@@ -66,7 +66,10 @@ export default function DriverTrucks() {
               <Button><Plus size={18} className="me-2" />{t('register_truck')}</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{t('register_truck')}</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>{t('register_truck')}</DialogTitle>
+                <DialogDescription>يرجى إدخال كافة تفاصيل الشاحنة بدقة لتتمكن من استخدامها في نقل الشحنات.</DialogDescription>
+              </DialogHeader>
               <div className="space-y-4">
                 <div><Label>{t('plate_number')}</Label><Input value={form.plate_number} onChange={e => setForm(p => ({...p, plate_number: e.target.value}))} className="mt-1" dir="ltr" /></div>
                 <div><Label>{t('brand')}</Label><Input value={form.brand} onChange={e => setForm(p => ({...p, brand: e.target.value}))} className="mt-1" /></div>
@@ -109,11 +112,6 @@ export default function DriverTrucks() {
                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(truck.id)}>
                       <Trash2 size={18} />
                     </Button>
-                  </div>
-                  <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                    {truck.model_year && <span>{t('model_year')}: {truck.model_year}</span>}
-                    {truck.truck_type && <span>{t('truck_type')}: {t(truck.truck_type === 'pickup' ? 'pickup_truck' : truck.truck_type)}</span>}
-                    {truck.capacity && <span>{t('capacity')}: {truck.capacity}</span>}
                   </div>
                 </CardContent>
               </Card>
