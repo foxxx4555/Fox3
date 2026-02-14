@@ -1,88 +1,100 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { supabase } from '@/integrations/supabase/client';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 
-// Auth Pages
+// استيراد الصفحات
 import WelcomePage from "./pages/WelcomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import NotFound from "./pages/NotFound";
-
-// Driver Pages (صفحات السائق)
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLoads from "./pages/driver/DriverLoads";
-import DriverTrucks from "./pages/driver/DriverTrucks";
-import DriverAccount from "./pages/driver/DriverAccount";
-import DriverTasks from "./pages/shipper/ShipperLoads"; // صفحة التحكم في الحالات للسائق
-
-// Shipper Pages (صفحات التاجر)
+import DriverTasks from "./pages/shipper/ShipperLoads";
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
-import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
-import ShipperDrivers from "./pages/shipper/ShipperDrivers";
 import ShipperHistory from "./pages/shipper/ShipperHistory";
+import ShipperDrivers from "./pages/shipper/ShipperDrivers";
 import ShipperTrack from "./pages/shipper/ShipperTrack";
-import ShipperAccount from "./pages/shipper/ShipperAccount";
-
-// Admin Pages (صفحات الإدارة) ✅ تأكد من وجود هذه الملفات في فولدر admin
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminLoads from "./pages/admin/AdminLoads";
-import AdminTickets from "./pages/admin/AdminTickets";
-import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  const [systemActive, setSystemActive] = useState<boolean | null>(null);
+  const [lockMessage, setLockMessage] = useState('');
+
+  // 🔒 نظام الرقابة والتحكم عن بعد
   useEffect(() => {
+    const checkStatus = async () => {
+      const { data } = await supabase.from('system_status').select('*').single();
+      if (data) {
+        setSystemActive(data.is_active);
+        setLockMessage(data.message);
+      }
+    };
+    checkStatus();
+
+    // بث مباشر لحالة القفل (لو غيرتها وإنت قاعد في بيتك السيستم يقفل عنده في ثانية)
+    const channel = supabase.channel('system-lock')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_status' }, (payload) => {
+        setSystemActive(payload.new.is_active);
+        setLockMessage(payload.new.message);
+      })
+      .subscribe();
+
     document.documentElement.dir = 'rtl';
-    document.documentElement.lang = 'ar';
+    return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // شاشة التحميل الأولية
+  if (systemActive === null) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-900">
+        <Loader2 className="animate-spin text-white" size={48} />
+      </div>
+    );
+  }
+
+  // 🚫 إذا قمت بإغلاق السيستم من عندك تظهر هذه الشاشة فقط
+  if (!systemActive) {
+    return (
+      <div className="h-screen w-full bg-[#0a0c10] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-24 h-24 bg-rose-500/20 rounded-full flex items-center justify-center text-rose-500 mb-8 animate-pulse border-2 border-rose-500/50">
+          <ShieldAlert size={50} />
+        </div>
+        <h1 className="text-4xl font-black text-white mb-4">النظام متوقف</h1>
+        <p className="text-slate-400 text-xl max-w-md font-bold leading-relaxed">{lockMessage}</p>
+        <div className="mt-12 text-[10px] text-white/10 uppercase tracking-widest font-black">
+          Access Denied - Security Protocol 77
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Sonner position="top-center" richColors />
-        
         <BrowserRouter>
           <Routes>
-            {/* 1. المسارات العامة */}
             <Route path="/" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* 2. المسارات المحمية */}
             <Route element={<ProtectedRoute />}>
-
-              {/* قسم السائق */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
               <Route path="/driver/tasks" element={<DriverTasks />} />
-              <Route path="/driver/trucks" element={<DriverTrucks />} />
-              <Route path="/driver/account" element={<DriverAccount />} />
-
-              {/* قسم التاجر */}
               <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
-              <Route path="/shipper/post" element={<ShipperPostLoad />} />
-              <Route path="/shipper/drivers" element={<ShipperDrivers />} />
               <Route path="/shipper/history" element={<ShipperHistory />} />
+              <Route path="/shipper/drivers" element={<ShipperDrivers />} />
               <Route path="/shipper/track" element={<ShipperTrack />} />
-              <Route path="/shipper/account" element={<ShipperAccount />} />
-
-              {/* قسم الإدارة ✅ هذا هو القسم الذي كان ناقصاً أو به خطأ */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/loads" element={<AdminLoads />} />
-              <Route path="/admin/tickets" element={<AdminTickets />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-
             </Route>
-
-            {/* 3. التعامل مع الروابط غير الموجودة */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
