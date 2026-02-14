@@ -129,7 +129,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             className="lg:hidden hover:bg-primary/10 h-16 w-16 rounded-2xl transition-all active:scale-90 flex items-center justify-center border-2 border-transparent focus:border-primary/20" 
             onClick={() => setSidebarOpen(true)}
           >
-             <Menu size={40} strokeWidth={2.5} className="text-primary" />
+             <Menu size={80} strokeWidth={2.5} className="text-primary" />
           </Button>
           
           <div className="flex items-center gap-4">
