@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Truck, Shield, zap, Globe } from 'lucide-react';
+import { Shield, zap, Globe, Truck } from 'lucide-react'; // تم الإبقاء على Truck لاستخدامها في المميزات بالأسفل
 
 export default function WelcomePage() {
   const { t } = useTranslation();
@@ -27,15 +27,20 @@ export default function WelcomePage() {
           transition={{ delay: 0.2 }}
           className="mb-12"
         >
-          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-blue-600 rounded-[2.5rem] shadow-2xl flex items-center justify-center mb-8 rotate-3 hover:rotate-0 transition-transform duration-500">
-            <Truck className="text-white w-12 h-12" />
+          {/* تم استبدال الصندوق القديم باللوجو الشفاف الجديد ✅ */}
+          <div className="mb-10 rotate-3 hover:rotate-0 transition-transform duration-500 cursor-pointer">
+            <img 
+              src="/logo.png" 
+              alt="SASGO Logo" 
+              className="w-56 md:w-80 h-auto mx-auto drop-shadow-[0_20px_50px_rgba(37,99,235,0.3)]" 
+            />
           </div>
 
-          <h1 className="text-6xl md:text-8xl font-black text-white mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-black text-white mb-6 tracking-tight">
             SAS <span className="text-primary">Transport</span>
           </h1>
 
-          <p className="text-2xl md:text-3xl font-bold text-slate-300 mb-4 px-4">
+          <p className="text-xl md:text-2xl font-bold text-slate-300 mb-4 px-4">
             {t('welcome_subtitle')}
           </p>
 
@@ -92,7 +97,7 @@ export default function WelcomePage() {
         transition={{ delay: 1 }}
         className="absolute bottom-10 text-slate-500 font-bold tracking-widest uppercase text-xs"
       >
-        World Class Logistics Platform
+        World Class Logistics Platform • Powered by SASGO
       </motion.div>
     </div>
   );
