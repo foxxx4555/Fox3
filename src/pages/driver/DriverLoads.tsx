@@ -113,15 +113,33 @@ export default function DriverLoads() {
         </Dialog>
 
         <Dialog open={showSurvey} onOpenChange={setShowSurvey}>
-          <DialogContent className="max-w-md rounded-[3rem] p-8 text-center bg-white shadow-2xl">
-             <h3 className="text-xl font-black mb-6">هل تم الاتفاق مع التاجر في SAS؟</h3>
-             <div className="space-y-3">
-                <Button className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black" onClick={handleAgree}>نعم، تم الاتفاق بنجاح ✅</Button>
-                <Button variant="outline" className="w-full h-14 rounded-2xl border-2 font-bold" onClick={() => setShowSurvey(false)}>لا، لم يتم الاتفاق</Button>
-             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </AppLayout>
-  );
-}
+  <DialogContent className="max-w-md rounded-[3rem] p-8 text-center bg-white shadow-2xl">
+    
+    {/* إضافة العنوان باستخدام المكون المخصص للـ Dialog */}
+    <DialogTitle className="text-xl font-black mb-6 text-center">
+      هل تم الاتفاق مع التاجر في SAS؟
+    </DialogTitle>
+
+    {/* إضافة وصف مخفي لإسكات تحذير الـ Description وتسهيل القراءة لذوي الاحتياجات الخاصة */}
+    <DialogDescription className="sr-only">
+      يرجى تأكيد ما إذا كان قد تم الاتفاق مع صاحب البضاعة أم لا.
+    </DialogDescription>
+
+    <div className="space-y-3">
+      <Button 
+        className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black" 
+        onClick={handleAgree}
+      >
+        نعم، تم الاتفاق بنجاح ✅
+      </Button>
+      
+      <Button 
+        variant="outline" 
+        className="w-full h-14 rounded-2xl border-2 font-bold" 
+        onClick={() => setShowSurvey(false)}
+      >
+        لا، لم يتم الاتفاق
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
