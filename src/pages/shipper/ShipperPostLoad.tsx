@@ -121,7 +121,8 @@ export default function ShipperPostLoad() {
       };
       await api.postLoad(loadData, userProfile.id);
       toast.success(t('success'));
-      navigate('/shipper/loads', { replace: true });
+      // بدل ما يروح لـ /shipper/loads
+navigate('/shipper/dashboard', { replace: true });
     } catch (err: any) {
       toast.error(err.message || 'حدث خطأ أثناء نشر الشحنة');
     } finally {
