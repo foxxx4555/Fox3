@@ -37,15 +37,15 @@ export default function ShipperPostLoad() {
     weight: '', 
     price: '',
     description: '', 
-    package_type: '', // نوع البضاعة
+    package_type: '', 
     pickup_date: today, 
-    body_type: '',    // نوع الشاحنة
+    body_type: 'box',    
     receiver_name: '', 
     receiver_phone: '', 
     receiver_address: '',
   });
 
-  // دالة التأكد من ملء البيانات (لتشغيل الزر)
+  // دالة التأكد من ملء البيانات لتشغيل زر النشر
   const isFormValid = () => {
     return (
       form.origin !== '' && 
@@ -53,9 +53,8 @@ export default function ShipperPostLoad() {
       form.weight !== '' && 
       form.price !== '' && 
       form.package_type !== '' && 
-      form.body_type !== '' && 
       form.receiver_name !== '' && 
-      form.receiver_phone.length >= 9
+      form.receiver_phone.length >= 8 // يقبل 8 أو 9 أرقام (بدون الصفر)
     );
   };
 
@@ -63,10 +62,17 @@ export default function ShipperPostLoad() {
     e.preventDefault();
     setLoading(true);
     try {
+      // ✅ حل مشكلة الرقم: تنظيف الرقم قبل الإرسال
+      let phone = form.receiver_phone.trim();
+      if (phone.startsWith('0')) {
+        phone = phone.substring(1); // حذف الصفر الأول لو موجود
+      }
+      
       const finalData = {
         ...form,
-        receiver_phone: '+966' + form.receiver_phone
+        receiver_phone: '+966' + phone // الصيغة الدولية الصحيحة +9665...
       };
+
       await api.postLoad(finalData, userProfile?.id || "");
       toast.success("تم نشر الشحنة بنجاح ✅");
       navigate('/shipper/dashboard'); 
@@ -88,21 +94,21 @@ export default function ShipperPostLoad() {
               <div className="bg-blue-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/10 shadow-lg">
                 <Package size={32} className="text-blue-400" />
               </div>
-              <CardTitle className="text-2xl font-black tracking-tight">التفاصيل الشحنة</CardTitle>
+              <CardTitle className="text-2xl font-black">التفاصيل الشحنة</CardTitle>
               <CardDescription className="text-slate-400 font-bold text-xs mt-2">يرجى ملاحظة أن جميع الحقول التي تحتوي على (*) هي حقول إجبارية</CardDescription>
             </CardHeader>
 
             <CardContent className="p-6 md:p-10 -mt-10 bg-white rounded-[3rem] relative z-10">
               <form onSubmit={handleSubmit} className="space-y-12">
                 
-                {/* 1. مسار الرحلة */}
+                {/* 1. مسار الرحلة (أزرق) */}
                 <section className="space-y-6">
                   <h3 className="text-md font-black flex items-center gap-3 text-slate-800 border-r-4 border-blue-600 pr-3">
                     مسار الرحلة *
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="font-bold text-[10px] text-slate-400 mr-1">موقع التحميل (من) *</Label>
+                      <Label className="font-bold text-[10px] text-slate-400">موقع التحميل (من) *</Label>
                       <Popover open={openOrigin} onOpenChange={setOpenOrigin}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full h-14 rounded-xl border-slate-200 font-bold justify-between bg-slate-50/50">
@@ -125,7 +131,7 @@ export default function ShipperPostLoad() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="font-bold text-[10px] text-slate-400 mr-1">موقع التسليم (إلى) *</Label>
+                      <Label className="font-bold text-[10px] text-slate-400">موقع التسليم (إلى) *</Label>
                       <Popover open={openDest} onOpenChange={setOpenDest}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full h-14 rounded-xl border-slate-200 font-bold justify-between bg-slate-50/50">
@@ -147,7 +153,7 @@ export default function ShipperPostLoad() {
                   </div>
                 </section>
 
-                {/* 2. مواصفات الشحنة */}
+                {/* 2. مواصفات الشحنة (أخضر) */}
                 <section className="space-y-6">
                   <h3 className="text-md font-black flex items-center gap-3 text-slate-800 border-r-4 border-emerald-500 pr-3">
                     مواصفات الشحنة
@@ -158,7 +164,7 @@ export default function ShipperPostLoad() {
                       <Input type="number" value={form.weight} onChange={e=>setForm(p=>({...p, weight: e.target.value}))} className="h-14 rounded-xl border-slate-200 font-bold bg-slate-50/50" placeholder="25" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="font-bold text-[10px] text-slate-400">السعر (ر.س) *</Label>
+                      <Label className="font-bold text-[10px] text-slate-400">السعر المعروض (ر.س) *</Label>
                       <Input type="number" value={form.price} onChange={e=>setForm(p=>({...p, price: e.target.value}))} className="h-14 rounded-xl border-slate-200 font-bold bg-slate-50/50" placeholder="2500" />
                     </div>
                     <div className="space-y-2">
@@ -182,14 +188,10 @@ export default function ShipperPostLoad() {
                       <Label className="font-bold text-[10px] text-slate-400">تاريخ التحميل *</Label>
                       <Input type="date" value={form.pickup_date} min={today} onChange={e=>setForm(p=>({...p, pickup_date: e.target.value}))} className="h-14 rounded-xl border-slate-200 font-bold bg-slate-50/50" />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="font-bold text-[10px] text-slate-400">الوصف (اختياري)</Label>
-                      <Textarea value={form.description} onChange={e=>setForm(p=>({...p, description: e.target.value}))} className="min-h-[80px] rounded-xl border-slate-200 font-bold p-4 bg-slate-50/50" placeholder="..." />
-                    </div>
                   </div>
                 </section>
 
-                {/* 3. تفاصيل المستلم (شكل 834) */}
+                {/* 3. تفاصيل المستلم (أصفر + خانة جوال 834) */}
                 <section className="space-y-6">
                   <h3 className="text-md font-black flex items-center gap-3 text-slate-800 border-r-4 border-amber-500 pr-3">
                     تفاصيل المستلم
@@ -198,43 +200,42 @@ export default function ShipperPostLoad() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label className="font-bold text-[10px] text-slate-400">اسم المستلم *</Label>
-                        <Input value={form.receiver_name} onChange={e=>setForm(p=>({...p, receiver_name: e.target.value}))} className="h-14 rounded-xl border-slate-200 font-bold bg-white" placeholder="Mohamed" />
+                        <Input value={form.receiver_name} onChange={e=>setForm(p=>({...p, receiver_name: e.target.value}))} className="h-14 rounded-xl border-slate-200 font-bold bg-white" placeholder="اسم المستلم" />
                       </div>
 
+                      {/* خانة الجوال مع معالجة الصفر لضمان الاتصال الصحيح */}
                       <div className="space-y-2">
                         <Label className="font-bold text-[10px] text-slate-400">جوال المستلم *</Label>
-                        <div className="relative">
-                           <div className="absolute left-0 top-0 h-full flex items-center px-4 border-r border-slate-100 font-black text-slate-400 bg-slate-50 rounded-l-xl z-10 text-sm">
+                        <div className="relative group">
+                           <div className="absolute right-0 top-0 h-full flex items-center px-4 border-l border-slate-100 font-black text-slate-400 bg-slate-50 rounded-r-xl z-10 text-sm">
                              +966
                            </div>
                            <Input 
                             value={form.receiver_phone} 
-                            onChange={(e) => setForm(p => ({ ...p, receiver_phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-                            className="h-14 rounded-xl border-2 border-blue-100 focus:border-blue-500 bg-white font-black text-md pl-20 text-right" 
-                            placeholder="05xxxxxxx" 
+                            onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, ''); // أرقام فقط
+                                if (val.startsWith('05')) val = val.substring(1); // تحويل 05 لـ 5 فوراً
+                                setForm(p => ({ ...p, receiver_phone: val.slice(0, 9) }));
+                            }}
+                            className="h-14 rounded-xl border-2 border-blue-100 focus:border-blue-500 bg-white font-black text-md pr-20 text-left tracking-widest" 
+                            placeholder="5xxxxxxxx" 
                             dir="ltr"
                            />
                         </div>
-                        <p className="text-[9px] text-slate-400 font-bold mt-1">يجب أن يتكون من 10 أرقام ويبدأ بـ 05</p>
+                        <p className="text-[9px] text-slate-400 font-bold mt-1">أدخل 9 أرقام (مثال: 554687233)</p>
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="font-bold text-[10px] text-slate-400">عنوان المستلم (اختياري)</Label>
-                        <Input value={form.receiver_address} onChange={e=>setForm(p=>({...p, receiver_address: e.target.value}))} className="h-14 rounded-xl border-slate-200 font-bold bg-white" placeholder="Bbvv" />
                     </div>
                   </div>
                 </section>
 
-                {/* زر النشر المنور */}
+                {/* زر النشر */}
                 <div className="pt-4">
                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex gap-3 mb-6 items-start">
                       <Info className="text-blue-500 shrink-0 mt-0.5" size={16} />
                       <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
-                        بضغطك على زر "نشر الشحنة"، فإنك توافق على شروط وأحكام منصة SAS Transport، وسيتم إبلاغ جميع الناقلين.
+                        بضغطك على زر "نشر الشحنة"، فإنك توافق على شروط وأحكام منصة SAS Transport، وسيتم إبلاغ جميع الناقلين المتاحين فوراً بمجرد الضغط.
                       </p>
                    </div>
-                   
                    <Button 
                     type="submit" 
                     disabled={loading || !isFormValid()} 
