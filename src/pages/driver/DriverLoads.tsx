@@ -56,16 +56,42 @@ export default function DriverLoads() {
     }
   };
 
+  // ✅ دالة الواتساب المطورة لإرسال تفاصيل الشحنة كاملة للتاجر
   const handleWhatsApp = (load: any) => {
     const phone = load.receiver_phone || load.owner?.phone;
     if (!phone) return toast.error("رقم التواصل غير متاح");
+    
     setPendingLoadId(load.id);
+    
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.startsWith('05')) cleanPhone = '966' + cleanPhone.substring(1);
     else if (cleanPhone.startsWith('5')) cleanPhone = '966' + cleanPhone;
-    const message = `السلام عليكم، أنا ناقل مهتم بشحنتك من ${load.origin} إلى ${load.destination}. هل لا تزال متاحة؟`;
+
+    // تنسيق التاريخ ليكون بالشكل العربي (١٥‏/٢‏/٢٠٢٦)
+    const formattedDate = new Date(load.pickup_date).toLocaleDateString('ar-SA', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric'
+    });
+
+    // نص الرسالة الاحترافي كما طلبته بالضبط
+    const message = `السلام عليكم، أنا ناقل من تطبيق SAS ومهتم بنقل شحنتك المعروضة:
+📍 من: ${load.origin}
+🏁 إلى: ${load.destination}
+📦 الحمولة: ${load.package_type || 'غير محدد'}
+⚖️ الوزن: ${load.weight} طن
+💰 السعر: ${load.price} ريال
+📅 تاريخ التحميل: ${formattedDate}
+
+هل الشحنة لا تزال متاحة للتحميل؟`;
+
+    // فتح الواتساب مع النص المشفر (Encoded)
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
-    setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 1500);
+    
+    setTimeout(() => { 
+        setSelectedLoad(null); 
+        setShowSurvey(true); 
+    }, 1500);
   };
 
   const handleCall = (load: any) => {
