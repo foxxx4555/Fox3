@@ -7,17 +7,20 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
+// استيراد الصفحات العامة
 import WelcomePage from "./pages/WelcomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import NotFound from "./pages/NotFound";
 
+// استيراد صفحات السائق
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLoads from "./pages/driver/DriverLoads";
 import DriverTrucks from "./pages/driver/DriverTrucks"; 
 import DriverAccount from "./pages/driver/DriverAccount";
 
+// استيراد صفحات التاجر (Shipper)
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
 import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
 import ShipperLoads from "./pages/shipper/ShipperLoads"; 
@@ -26,6 +29,7 @@ import ShipperHistory from "./pages/shipper/ShipperHistory";
 import ShipperTrack from "./pages/shipper/ShipperTrack";
 import ShipperAccount from "./pages/shipper/ShipperAccount";
 
+// استيراد صفحات الإدارة
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminLoads from "./pages/admin/AdminLoads";
@@ -48,11 +52,13 @@ const App = () => {
       }
     };
     checkStatus();
+    document.documentElement.dir = 'rtl';
+    document.documentElement.lang = 'ar';
     return () => { mounted = false; };
   }, []);
 
-  if (systemActive === null) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
-  if (!systemActive) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white">النظام متوقف مؤقتاً</div>;
+  if (systemActive === null) return <div className="h-screen flex items-center justify-center bg-[#0a0c10]"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
+  if (!systemActive) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white text-3xl font-black">النظام متوقف مؤقتاً</div>;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -66,12 +72,14 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             <Route element={<ProtectedRoute />}>
+              {/* مسارات السائق */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
-              <Route path="/driver/tasks" element={<ShipperLoads />} /> 
+              <Route path="/driver/tasks" element={<ShipperLoads />} /> {/* هذا المسار حل مشكلة الـ 404 للسائق ✅ */}
               <Route path="/driver/trucks" element={<DriverTrucks />} /> 
               <Route path="/driver/account" element={<DriverAccount />} />
 
+              {/* مسارات التاجر */}
               <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
               <Route path="/shipper/post" element={<ShipperPostLoad />} />
               <Route path="/shipper/loads" element={<ShipperLoads />} /> 
@@ -80,12 +88,14 @@ const App = () => {
               <Route path="/shipper/track" element={<ShipperTrack />} />
               <Route path="/shipper/account" element={<ShipperAccount />} />
 
+              {/* مسارات الإدارة */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/loads" element={<AdminLoads />} />
               <Route path="/admin/tickets" element={<AdminTickets />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
