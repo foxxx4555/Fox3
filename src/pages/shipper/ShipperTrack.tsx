@@ -3,6 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Truck, Navigation } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // السطر ده ناقص عندك
 
 export default function ShipperTrack() {
   const [activeLoads, setActiveLoads] = useState<any[]>([]);
