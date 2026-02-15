@@ -75,7 +75,7 @@ const App = () => {
               {/* مسارات السائق */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
-              <Route path="/driver/tasks" element={<ShipperLoads />} /> {/* هذا المسار حل مشكلة الـ 404 للسائق ✅ */}
+              <Route path="/driver/tasks" element={<DriverLoads />} /> {/* هذا المسار حل مشكلة الـ 404 للسائق ✅ */}
               <Route path="/driver/trucks" element={<DriverTrucks />} /> 
               <Route path="/driver/account" element={<DriverAccount />} />
 
