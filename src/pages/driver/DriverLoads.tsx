@@ -10,19 +10,22 @@ import {
   CheckCircle2, AlertTriangle, Info, Weight, 
   Banknote, Calendar, Truck, User
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+// تم إضافة DialogTitle و DialogDescription هنا ✅
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // ✅ تم إضافة AnimatePresence
+import { useNavigate } from 'react-router-dom';
 
 export default function DriverLoads() {
   const { userProfile } = useAuth();
   const [loads, setLoads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // حالة التحميل عند التحديث
   const [selectedLoad, setSelectedLoad] = useState<any>(null);
   const [showSurvey, setShowSurvey] = useState(false);
-  const [pendingLoadId, setPendingLoadId] = useState<string | null>(null);
+  const [pendingLoadId, setPendingLoadId] = useState<string | null>(null); // لحفظ ID الشحنة التي يتم التفاوض عليها
+  const navigate = useNavigate();
 
   const fetchLoads = async () => {
     try {
@@ -40,17 +43,22 @@ export default function DriverLoads() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // دالة تفعيل "تم الاتفاق" وتحويل الشحنة للسائق
   const handleConfirmAgreement = async () => {
     if (!pendingLoadId || !userProfile?.id) return;
+    
     setIsProcessing(true);
     try {
+      // ✅ تحديث حالة الشحنة في الداتابيز لـ in_progress وتعيين السائق
       await api.acceptLoad(pendingLoadId, userProfile.id);
-      toast.success("تم بنجاح! انتقلت الشحنة إلى قائمة مهامك الحالية 🚛");
+      
+      toast.success("تم بنجاح! انتقلت الشحنة لمهامك الحالية 🚛");
       setShowSurvey(false);
       setPendingLoadId(null);
-      fetchLoads(); 
+      fetchLoads(); // ✅ تحديث القائمة لإزالة الشحنة منها
     } catch (error) {
-      toast.error("فشل تحديث حالة الشحنة");
+      console.error(error);
+      toast.error("عفواً، حدث خطأ أثناء تحديث حالة الشحنة");
     } finally {
       setIsProcessing(false);
     }
@@ -59,21 +67,33 @@ export default function DriverLoads() {
   const handleWhatsApp = (load: any) => {
     const phone = load.receiver_phone || load.owner?.phone;
     if (!phone) return toast.error("رقم التواصل غير متاح");
-    setPendingLoadId(load.id);
+    
+    setPendingLoadId(load.id); // حفظ الـ ID قبل فتح الواتساب
+    
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.startsWith('05')) cleanPhone = '966' + cleanPhone.substring(1);
     else if (cleanPhone.startsWith('5')) cleanPhone = '966' + cleanPhone;
+
     const message = `السلام عليكم، أنا ناقل مهتم بشحنتك من ${load.origin} إلى ${load.destination}. هل لا تزال متاحة؟`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
-    setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 1500);
+    
+    setTimeout(() => { 
+      setSelectedLoad(null); 
+      setShowSurvey(true); 
+    }, 1500);
   };
 
   const handleCall = (load: any) => {
     const phone = load.receiver_phone || load.owner?.phone;
     if (!phone) return toast.error("رقم الهاتف غير متاح");
-    setPendingLoadId(load.id);
+    
+    setPendingLoadId(load.id); // حفظ المعرف
     window.location.href = `tel:${phone}`;
-    setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 1500);
+    
+    setTimeout(() => { 
+      setSelectedLoad(null); 
+      setShowSurvey(true); 
+    }, 1500);
   };
 
   return (
@@ -81,41 +101,53 @@ export default function DriverLoads() {
       <div className="space-y-8 max-w-4xl mx-auto pb-20">
         <div className="flex justify-between items-center">
            <Badge className="bg-emerald-500/10 text-emerald-600 border-none px-4 py-1.5 rounded-full font-black animate-pulse">متصل الآن • تحديث حي</Badge>
-           <h1 className="text-3xl font-black text-slate-900 text-right">الشحنات المتاحة</h1>
+           <h1 className="text-3xl font-black text-slate-900">الشحنات المتاحة</h1>
         </div>
         
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={48} /></div>
         ) : (
           <div className="grid gap-6">
-            {loads.map((load) => (
-              <Card key={load.id} className="rounded-[2.5rem] border-none shadow-md bg-white overflow-hidden hover:shadow-xl transition-all border-r-8 border-r-blue-600">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex-1 w-full text-right space-y-4">
-                       <div className="flex items-center gap-4 justify-end">
-                          <div><p className="text-[10px] font-black text-slate-400 uppercase">من</p><p className="font-black text-lg">{load.origin}</p></div>
-                          <div className="flex-1 h-px bg-slate-100 relative min-w-[40px]"><MapPin size={14} className="absolute inset-0 m-auto text-blue-600"/></div>
-                          <div><p className="text-[10px] font-black text-slate-400 uppercase text-left">إلى</p><p className="font-black text-lg text-left">{load.destination}</p></div>
-                       </div>
-                    </div>
-                    <div className="md:w-48 text-center md:border-r md:pr-6">
-                       <p className="text-2xl font-black text-blue-600 mb-3">{load.price} <span className="text-xs">ر.س</span></p>
-                       <Button onClick={() => setSelectedLoad(load)} className="w-full h-12 rounded-xl bg-slate-900 hover:bg-blue-600 font-black transition-all">عرض التفاصيل</Button>
-                    </div>
+            <AnimatePresence> {/* تم إضافة AnimatePresence هنا ✅ */}
+              {loads.map((load) => (
+                <motion.div
+                  key={load.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                >
+                  <Card className="rounded-[2.5rem] border-none shadow-md bg-white overflow-hidden hover:shadow-xl transition-all border-r-8 border-r-blue-600">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="flex-1 w-full text-right space-y-4">
+                           <div className="flex items-center gap-4 justify-end">
+                              <div><p className="text-[10px] font-black text-slate-400 uppercase">من</p><p className="font-black text-lg">{load.origin}</p></div>
+                              <div className="flex-1 h-px bg-slate-100 relative min-w-[40px]"><MapPin size={14} className="absolute inset-0 m-auto text-blue-600"/></div>
+                              <div><p className="text-[10px] font-black text-slate-400 uppercase text-left">إلى</p><p className="font-black text-lg text-left">{load.destination}</p></div>
+                           </div>
+                        </div>
+                        <div className="md:w-48 text-center md:border-r md:pr-6">
+                           <p className="text-2xl font-black text-blue-600 mb-3">{load.price} <span className="text-xs">ر.س</span></p>
+                           <Button onClick={() => setSelectedLoad(load)} className="w-full h-12 rounded-xl bg-slate-900 hover:bg-blue-600 font-black transition-all">عرض التفاصيل</Button>
+                        </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
 
         <Dialog open={!!selectedLoad} onOpenChange={() => setSelectedLoad(null)}>
           <DialogContent className="max-w-2xl rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
-            <div className="sr-only">
+            {/* الجزء المضاف لإخفاء الخطأ برمجياً ✅ */}
+            <DialogHeader className="sr-only">
               <DialogTitle>تفاصيل الشحنة</DialogTitle>
               <DialogDescription>معلومات التحميل والتواصل</DialogDescription>
-            </div>
+            </DialogHeader>
+
             <div className="p-6 bg-[#0f172a] text-white flex justify-between items-center">
                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20"><Package size={22}/></div>
@@ -129,7 +161,6 @@ export default function DriverLoads() {
 
             {selectedLoad && (
               <div className="p-8 space-y-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                
                 {/* قسم المسار */}
                 <div className="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 relative overflow-hidden">
                   <div className="flex justify-between items-center">
@@ -179,7 +210,7 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* تفاصيل المستلم (الجزء اللي كان ناقص) ✅ */}
+                {/* تفاصيل المستلم */}
                 <div className="space-y-4">
                   <p className="font-black text-slate-800 flex items-center gap-2 text-sm">
                     <User size={18} className="text-emerald-500"/> تفاصيل المستلم
@@ -200,7 +231,7 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* تعليمات إضافية (الجزء اللي كان ناقص) ✅ */}
+                {/* تعليمات إضافية */}
                 <div className="space-y-3">
                   <p className="font-black text-slate-800 flex items-center gap-2 text-sm">
                     <Info size={18} className="text-blue-600"/> تعليمات إضافية
@@ -218,9 +249,8 @@ export default function DriverLoads() {
                    </p>
                 </div>
 
-                {/* الأزرار */}
                 <div className="grid grid-cols-2 gap-4 pt-2">
-                   <Button onClick={() => handleCall(selectedLoad)} className="h-16 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-lg font-black gap-3 shadow-xl transition-all active:scale-95">
+                   <Button onClick={() => handleCall(selectedLoad.receiver_phone || selectedLoad.owner?.phone)} className="h-16 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-lg font-black gap-3 shadow-xl transition-all active:scale-95">
                       <Phone size={24} /> اتصال
                    </Button>
                    <Button onClick={() => handleWhatsApp(selectedLoad)} className="h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-lg font-black gap-3 shadow-xl transition-all active:scale-95">
@@ -236,8 +266,8 @@ export default function DriverLoads() {
         <Dialog open={showSurvey} onOpenChange={(val) => !isProcessing && setShowSurvey(val)}>
           <DialogContent className="max-w-md rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
              <div className="sr-only">
-               <DialogTitle>تأكيد الاتفاق</DialogTitle>
-               <DialogDescription>تحديث حالة الشحنة</DialogDescription>
+               <DialogTitle>تقرير حالة الشحنة</DialogTitle>
+               <DialogDescription>تأكيد الاتفاق مع التاجر بعد التواصل</DialogDescription>
              </div>
              <div className="p-6 bg-blue-600 text-white text-center">
                 <p className="font-black text-lg">تقرير SAS للعمليات</p>
