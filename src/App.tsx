@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
-
+import { Button } from '@/components/ui/button';
 // استيراد الصفحات العامة
 import WelcomePage from "./pages/WelcomePage";
 import LoginPage from "./pages/LoginPage";
