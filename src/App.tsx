@@ -13,13 +13,14 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import NotFound from "./pages/NotFound";
-import DriverTrucks from "./pages/driver/DriverTrucks"
+
 // صفحات السائق
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLoads from "./pages/driver/DriverLoads";
 import DriverTrucks from "./pages/driver/DriverTrucks"; 
 import DriverAccount from "./pages/driver/DriverAccount";
-import DriverTasks from   "./pages/driver/DriverTasks.tsx"; 
+import DriverTasks from "./pages/driver/DriverTasks"; 
+
 // صفحات التاجر
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
 import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
@@ -32,24 +33,53 @@ import ShipperAccount from "./pages/shipper/ShipperAccount";
 // صفحات الإدارة
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const [systemActive, setSystemActive] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let isMounted = true; // حماية لمنع الـ AbortError عند إغلاق المكون
+
     const checkStatus = async () => {
       try {
-        const { data } = await supabase.from('system_status').select('is_active').single();
-        setSystemActive(data?.is_active ?? true);
-      } catch (e) { setSystemActive(true); }
+        const { data, error } = await supabase
+          .from('system_status')
+          .select('is_active')
+          .maybeSingle();
+
+        if (isMounted) {
+          // لو الجدول مش موجود أو حصل خطأ بنخلي السيستم شغال افتراضياً
+          setSystemActive(data?.is_active ?? true);
+        }
+      } catch (e) { 
+        if (isMounted) setSystemActive(true); 
+      }
     };
+
     checkStatus();
     document.documentElement.dir = 'rtl';
     document.documentElement.lang = 'ar';
+
+    return () => {
+      isMounted = false; // تنظيف عند الخروج لمنع أي Abort Signal
+    };
   }, []);
 
-  if (systemActive === null) return <div className="h-screen flex items-center justify-center bg-[#0a0c10]"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
+  if (systemActive === null) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#0a0c10]">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -66,7 +96,7 @@ const App = () => {
               {/* مسارات السائق */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
-              <Route path="/driver/tasks" element={<DriverLoads />} /> {/* ✅ تم الربط بصفحة موجودة لمنع الـ 404 */}
+              <Route path="/driver/tasks" element={<DriverTasks />} /> 
               <Route path="/driver/trucks" element={<DriverTrucks />} /> 
               <Route path="/driver/account" element={<DriverAccount />} />
 
