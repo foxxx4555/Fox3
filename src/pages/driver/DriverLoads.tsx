@@ -1,93 +1,92 @@
 import { useEffect, useState } from 'react';
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/services/api';
+import AppLayout from '@/components/AppLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, MapPin, Package, Truck } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { ShieldAlert, Loader2 } from 'lucide-react';
 
-import WelcomePage from "./pages/WelcomePage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import NotFound from "./pages/NotFound";
+export default function DriverLoads() {
+  const { userProfile } = useAuth();
+  const [loads, setLoads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-import DriverDashboard from "./pages/driver/DriverDashboard";
-import DriverLoads from "./pages/driver/DriverLoads";
-import DriverTrucks from "./pages/driver/DriverTrucks"; 
-import DriverAccount from "./pages/driver/DriverAccount";
-import DriverTasks from "./pages/shipper/ShipperLoads"; 
-
-import ShipperDashboard from "./pages/shipper/ShipperDashboard";
-import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
-import ShipperDrivers from "./pages/shipper/ShipperDrivers";
-import ShipperHistory from "./pages/shipper/ShipperHistory";
-import ShipperTrack from "./pages/shipper/ShipperTrack";
-import ShipperAccount from "./pages/shipper/ShipperAccount";
-
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminLoads from "./pages/admin/AdminLoads";
-import AdminTickets from "./pages/admin/AdminTickets";
-import AdminSettings from "./pages/admin/AdminSettings";
-
-const queryClient = new QueryClient();
-
-const App = () => {
-  const [systemActive, setSystemActive] = useState<boolean | null>(null);
+  const fetchLoads = async () => {
+    try {
+      const data = await api.getAvailableLoads();
+      setLoads(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const checkStatus = async () => {
-      const { data } = await supabase.from('system_status').select('*').single();
-      setSystemActive(data?.is_active ?? true);
-    };
-    checkStatus();
-    document.documentElement.dir = 'rtl';
-    document.documentElement.lang = 'ar';
+    fetchLoads();
+    const channel = supabase.channel('available-loads')
+      .on('postgres_changes', { event: '*', table: 'loads', filter: 'status=eq.available' }, () => fetchLoads())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  if (systemActive === null) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>;
-
-  if (!systemActive) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white text-3xl font-black">النظام متوقف مؤقتاً</div>;
+  const handleAcceptLoad = async (loadId: string) => {
+    if (!userProfile?.id) return;
+    try {
+      await api.acceptLoad(loadId, userProfile.id);
+      toast.success("تم قبول الشحنة بنجاح!");
+      fetchLoads();
+    } catch (err: any) {
+      toast.error("فشل في قبول الشحنة");
+    }
+  };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Sonner position="top-center" richColors />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<WelcomePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-            <Route element={<ProtectedRoute />}>
-              <Route path="/driver/dashboard" element={<DriverDashboard />} />
-              <Route path="/driver/loads" element={<DriverLoads />} />
-              <Route path="/driver/tasks" element={<DriverTasks />} />
-              <Route path="/driver/trucks" element={<DriverTrucks />} /> 
-              <Route path="/driver/account" element={<DriverAccount />} />
-
-              <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
-              <Route path="/shipper/post" element={<ShipperPostLoad />} />
-              <Route path="/shipper/drivers" element={<ShipperDrivers />} />
-              <Route path="/shipper/history" element={<ShipperHistory />} />
-              <Route path="/shipper/track" element={<ShipperTrack />} />
-              <Route path="/shipper/account" element={<ShipperAccount />} />
-
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/loads" element={<AdminLoads />} />
-              <Route path="/admin/tickets" element={<AdminTickets />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <AppLayout>
+      <div className="space-y-8 text-right">
+        <h1 className="text-4xl font-black tracking-tight text-slate-900">الشحنات المتاحة</h1>
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={48} /></div>
+        ) : loads.length === 0 ? (
+          <div className="text-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed">
+            <Package size={64} className="mx-auto text-slate-200 mb-4" />
+            <p className="text-xl font-black text-slate-400 italic">لا توجد شحنات متاحة حالياً</p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {loads.map((load) => (
+              <Card key={load.id} className="rounded-[2rem] border-none shadow-lg bg-white overflow-hidden hover:shadow-xl transition-all">
+                <CardContent className="p-8">
+                  <div className="flex flex-col md:flex-row justify-between gap-8">
+                    <div className="flex-1 space-y-6">
+                      <div className="flex items-center gap-6 justify-end">
+                        <div className="text-center">
+                          <p className="text-[10px] font-black text-slate-400 uppercase mb-1">من</p>
+                          <p className="font-black text-xl">{load.origin}</p>
+                        </div>
+                        <div className="flex-1 h-px bg-slate-100 relative min-w-[50px]">
+                           <MapPin size={16} className="absolute inset-0 m-auto text-blue-600 bg-white" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] font-black text-slate-400 uppercase mb-1">إلى</p>
+                          <p className="font-black text-xl">{load.destination}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="md:w-64 flex flex-col justify-between items-end md:border-r md:pr-8">
+                      <p className="text-3xl font-black text-blue-600">{load.price} ر.س</p>
+                      <Button onClick={() => handleAcceptLoad(load.id)} className="w-full h-14 rounded-2xl bg-blue-600 font-black text-white">قبول الشحنة</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </AppLayout>
   );
-};
-
-export default App;
+}
