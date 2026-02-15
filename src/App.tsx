@@ -23,13 +23,13 @@ import DriverAccount from "./pages/driver/DriverAccount";
 // استيراد صفحات التاجر (Shipper)
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
 import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
-import ShipperLoads from "./pages/shipper/ShipperLoads"; // تم تغيير الاسم هنا للوضوح
+import ShipperLoads from "./pages/shipper/ShipperLoads"; 
 import ShipperDrivers from "./pages/shipper/ShipperDrivers";
 import ShipperHistory from "./pages/shipper/ShipperHistory";
 import ShipperTrack from "./pages/shipper/ShipperTrack";
 import ShipperAccount from "./pages/shipper/ShipperAccount";
 
-// استيراد صفحات الإدارة (تأكد أن هذه الملفات موجودة فعلياً في مشروعك)
+// استيراد صفحات الإدارة
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminLoads from "./pages/admin/AdminLoads";
@@ -66,7 +66,6 @@ const App = () => {
         <Sonner position="top-center" richColors />
         <BrowserRouter>
           <Routes>
-            {/* المسارات العامة */}
             <Route path="/" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -76,6 +75,7 @@ const App = () => {
               {/* مسارات السائق */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
+              <Route path="/driver/tasks" element={<ShipperLoads />} /> {/* هذا المسار حل مشكلة الـ 404 للسائق ✅ */}
               <Route path="/driver/trucks" element={<DriverTrucks />} /> 
               <Route path="/driver/account" element={<DriverAccount />} />
 
@@ -96,7 +96,6 @@ const App = () => {
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
 
-            {/* صفحة 404 لأي مسار غير معروف */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
