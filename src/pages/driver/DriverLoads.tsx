@@ -10,7 +10,8 @@ import {
   CheckCircle2, AlertTriangle, Info, Weight, 
   Banknote, Calendar, Truck, ArrowLeftRight, User, Hash
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+// تم إضافة DialogTitle و DialogDescription هنا ✅
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
@@ -38,20 +39,15 @@ export default function DriverLoads() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ✅ تعديل دالة الواتساب لاستخدام رقم المستلم
   const handleWhatsApp = (load: any) => {
-    // نستخدم receiver_phone أولاً، وإذا لم يوجد نستخدم رقم صاحب الحساب كاحتياط
     const phone = load.receiver_phone || load.owner?.phone;
-    
     if (!phone) return toast.error("رقم التواصل غير متاح");
     
     let cleanPhone = phone.replace(/\D/g, '');
-    
-    // تأكد من صيغة الرقم السعودي للواتساب
     if (cleanPhone.startsWith('05')) cleanPhone = '966' + cleanPhone.substring(1);
     else if (cleanPhone.startsWith('5')) cleanPhone = '966' + cleanPhone;
 
-    const message = `السلام عليكم، أنا ناقل من تطبيق SAS ومهتم بنقل شحنتك المروضة:
+    const message = `السلام عليكم، أنا ناقل من تطبيق SAS ومهتم بنقل شحنتك المعروضة:
 📍 من: ${load.origin}
 🏁 إلى: ${load.destination}
 📦 الحمولة: ${load.package_type}
@@ -65,7 +61,6 @@ export default function DriverLoads() {
     setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 2000);
   };
 
-  // ✅ تعديل دالة الاتصال
   const handleCall = (phone: string) => {
     if (!phone) return toast.error("رقم الهاتف غير متاح");
     window.location.href = `tel:${phone}`;
@@ -106,8 +101,15 @@ export default function DriverLoads() {
           </div>
         )}
 
+        {/* --- نافذة تفاصيل الشحنة (تم التعديل) --- */}
         <Dialog open={!!selectedLoad} onOpenChange={() => setSelectedLoad(null)}>
           <DialogContent className="max-w-2xl rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
+            {/* الجزء المضاف لإخفاء الخطأ برمجياً ✅ */}
+            <div className="sr-only">
+              <DialogTitle>تفاصيل الشحنة</DialogTitle>
+              <DialogDescription>عرض بيانات المواقع والأسعار والاتصال للتاجر</DialogDescription>
+            </div>
+
             <div className="p-6 bg-[#0f172a] text-white flex justify-between items-center">
                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20"><Package size={22}/></div>
@@ -121,7 +123,6 @@ export default function DriverLoads() {
 
             {selectedLoad && (
               <div className="p-8 space-y-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                
                 <div className="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 relative overflow-hidden">
                   <div className="flex justify-between items-center relative z-10">
                     <div className="text-center flex-1">
@@ -206,7 +207,6 @@ export default function DriverLoads() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
-                   {/* ✅ تم التعديل هنا ليأخذ رقم المستلم receiver_phone */}
                    <Button onClick={() => handleCall(selectedLoad.receiver_phone || selectedLoad.owner?.phone)} className="h-16 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-lg font-black gap-3 shadow-xl shadow-orange-100 transition-all active:scale-95">
                       <Phone size={24} /> اتصال
                    </Button>
@@ -219,9 +219,15 @@ export default function DriverLoads() {
           </DialogContent>
         </Dialog>
 
-        {/* --- شاشة التقرير --- */}
+        {/* --- شاشة التقرير (تم التعديل) --- */}
         <Dialog open={showSurvey} onOpenChange={setShowSurvey}>
           <DialogContent className="max-w-md rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
+             {/* الجزء المضاف لإخفاء الخطأ برمجياً ✅ */}
+             <div className="sr-only">
+               <DialogTitle>تقرير حالة الشحنة</DialogTitle>
+               <DialogDescription>تأكيد الاتفاق مع التاجر بعد التواصل</DialogDescription>
+             </div>
+
              <div className="p-6 bg-blue-600 text-white text-center">
                 <p className="font-black text-lg">تقرير SAS للعمليات</p>
              </div>
