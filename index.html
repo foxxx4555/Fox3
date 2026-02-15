@@ -17,12 +17,41 @@
     <style>
       body { font-family: 'Cairo', sans-serif; }
     </style>
+
+    <!-- OneSignal SDK - الربط اللحظي للتنبيهات -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "79ca45f2-a2b2-4135-8a83-11e3e9f8b5a8",
+          allowLocalhostAsSecureOrigin: true,
+          notifyButton: {
+            enable: true, // إظهار جرس الاشتراك الصغير
+            position: 'bottom-right',
+            size: 'medium',
+            colors: {
+              'circle.background': '#2563eb', // لون أزرق احترافي
+            },
+            text: {
+              'tip.state.unsubscribed': 'اشترك في التنبيهات اللحظية',
+              'tip.state.subscribed': 'أنت مشترك في التنبيهات',
+              'message.prenotify': 'انقر للاشتراك في تنبيهات الشحنات الجديدة',
+              'message.action.subscribed': 'شكراً للاشتراك!',
+              'dialog.main.title': 'إدارة تنبيهات SAS',
+              'dialog.main.button.subscribe': 'اشتراك الآن',
+              'dialog.main.button.unsubscribe': 'إلغاء الاشتراك'
+            }
+          },
+        });
+      });
+    </script>
   </head>
 
   <body>
     <div id="root"></div>
 
-    <!-- أداة الفحص للموبايل (Eruda) - هتظهرلك على شكل ترس صغير -->
+    <!-- أداة الفحص للموبايل (Eruda) -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>
       eruda.init({
