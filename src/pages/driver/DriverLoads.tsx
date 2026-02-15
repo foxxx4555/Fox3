@@ -38,12 +38,18 @@ export default function DriverLoads() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ✅ تعديل دالة الواتساب لاستخدام رقم المستلم
   const handleWhatsApp = (load: any) => {
-    const phone = load.owner?.phone;
-    if (!phone) return toast.error("رقم صاحب الشحنة غير متاح");
+    // نستخدم receiver_phone أولاً، وإذا لم يوجد نستخدم رقم صاحب الحساب كاحتياط
+    const phone = load.receiver_phone || load.owner?.phone;
+    
+    if (!phone) return toast.error("رقم التواصل غير متاح");
     
     let cleanPhone = phone.replace(/\D/g, '');
+    
+    // تأكد من صيغة الرقم السعودي للواتساب
     if (cleanPhone.startsWith('05')) cleanPhone = '966' + cleanPhone.substring(1);
+    else if (cleanPhone.startsWith('5')) cleanPhone = '966' + cleanPhone;
 
     const message = `السلام عليكم، أنا ناقل من تطبيق SAS ومهتم بنقل شحنتك المروضة:
 📍 من: ${load.origin}
@@ -59,7 +65,9 @@ export default function DriverLoads() {
     setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 2000);
   };
 
+  // ✅ تعديل دالة الاتصال
   const handleCall = (phone: string) => {
+    if (!phone) return toast.error("رقم الهاتف غير متاح");
     window.location.href = `tel:${phone}`;
     setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 2000);
   };
@@ -98,10 +106,8 @@ export default function DriverLoads() {
           </div>
         )}
 
-        {/* --- شاشة التفاصيل الكاملة (كل البيانات) --- */}
         <Dialog open={!!selectedLoad} onOpenChange={() => setSelectedLoad(null)}>
           <DialogContent className="max-w-2xl rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
-            {/* Header */}
             <div className="p-6 bg-[#0f172a] text-white flex justify-between items-center">
                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20"><Package size={22}/></div>
@@ -116,7 +122,6 @@ export default function DriverLoads() {
             {selectedLoad && (
               <div className="p-8 space-y-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
                 
-                {/* 1. قسم المسار */}
                 <div className="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 relative overflow-hidden">
                   <div className="flex justify-between items-center relative z-10">
                     <div className="text-center flex-1">
@@ -136,7 +141,6 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* 2. شبكة مواصفات الحمولة (زي سكرين 953) */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center text-center gap-1">
                     <Weight className="text-slate-400" size={20} />
@@ -165,7 +169,6 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* 3. بيانات المستلم (جديد) */}
                 <div className="space-y-4">
                   <p className="font-black text-slate-800 flex items-center gap-2 text-sm">
                     <User size={18} className="text-emerald-500"/> تفاصيل المستلم
@@ -186,7 +189,6 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* 4. الوصف والتعليمات */}
                 <div className="space-y-3">
                   <p className="font-black text-slate-800 flex items-center gap-2 text-sm">
                     <Info size={18} className="text-blue-600"/> تعليمات إضافية
@@ -196,7 +198,6 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* 5. إخلاء المسؤولية */}
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3">
                    <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
                    <p className="text-[10px] font-bold text-amber-800 leading-tight">
@@ -204,9 +205,9 @@ export default function DriverLoads() {
                    </p>
                 </div>
 
-                {/* 6. الأزرار النهائية */}
                 <div className="grid grid-cols-2 gap-4 pt-2">
-                   <Button onClick={() => handleCall(selectedLoad.owner?.phone)} className="h-16 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-lg font-black gap-3 shadow-xl shadow-orange-100 transition-all active:scale-95">
+                   {/* ✅ تم التعديل هنا ليأخذ رقم المستلم receiver_phone */}
+                   <Button onClick={() => handleCall(selectedLoad.receiver_phone || selectedLoad.owner?.phone)} className="h-16 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-lg font-black gap-3 shadow-xl shadow-orange-100 transition-all active:scale-95">
                       <Phone size={24} /> اتصال
                    </Button>
                    <Button onClick={() => handleWhatsApp(selectedLoad)} className="h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-lg font-black gap-3 shadow-xl shadow-emerald-100 transition-all active:scale-95">
@@ -218,7 +219,7 @@ export default function DriverLoads() {
           </DialogContent>
         </Dialog>
 
-        {/* --- شاشة التقرير (SAS) --- */}
+        {/* --- شاشة التقرير --- */}
         <Dialog open={showSurvey} onOpenChange={setShowSurvey}>
           <DialogContent className="max-w-md rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
              <div className="p-6 bg-blue-600 text-white text-center">
