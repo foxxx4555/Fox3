@@ -33,9 +33,46 @@ export const api = {
 
   async getNotifications(userId: string) {
     try {
-      const { data } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
       return data || [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      handleApiError(e);
+      return []; 
+    }
+  },
+
+  // ✅ دالة حذف إشعار واحد
+  async deleteNotification(id: string) {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      handleApiError(e);
+      return false;
+    }
+  },
+
+  // ✅ دالة مسح جميع إشعارات المستخدم
+  async clearAllNotifications(userId: string) {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', userId);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      handleApiError(e);
+      return false;
+    }
   },
 
   // --- إدارة الشحنات ---
@@ -59,7 +96,6 @@ export const api = {
       const { error } = await supabase.from('loads').update({ status: 'in_progress', driver_id: driverId, updated_at: new Date().toISOString() }).eq('id', loadId);
       if (error) throw error;
       if (load) {
-        // نستخدم api بدلاً من this لضمان الوصول للدالة ✅
         await api.createNotification(load.owner_id, "✅ تم قبول شحنتك", `وافق ناقل على طلبك من ${load.origin}`, "accept");
       }
       return true;
