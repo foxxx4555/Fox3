@@ -37,7 +37,7 @@ export default function DriverLoads() {
     if (!userProfile?.id) return;
     try {
       await api.acceptLoad(loadId, userProfile.id);
-      toast.success("تم قبول الشحنة بنجاح! اذهب لصفحة مهامي للبدء.");
+      toast.success("تم قبول الشحنة بنجاح! توجه لمهامي لبدء التنفيذ.");
       fetchLoads();
     } catch (err: any) {
       toast.error("فشل في قبول الشحنة");
@@ -61,26 +61,31 @@ export default function DriverLoads() {
               <Card key={load.id} className="rounded-[2rem] border-none shadow-lg bg-white overflow-hidden hover:shadow-xl transition-all">
                 <CardContent className="p-8">
                   <div className="flex flex-col md:flex-row justify-between gap-8">
-                    <div className="flex-1 space-y-6">
-                      <div className="flex items-center gap-6">
+                    <div className="flex-1 space-y-6 text-right">
+                      <div className="flex items-center gap-6 justify-end">
                         <div className="text-center">
                           <p className="text-[10px] font-black text-slate-400 uppercase mb-1">من</p>
                           <p className="font-black text-xl">{load.origin}</p>
                         </div>
-                        <div className="flex-1 h-px bg-slate-100 relative"><MapPin size={16} className="absolute inset-0 m-auto text-blue-600 bg-white" /></div>
+                        <div className="flex-1 h-px bg-slate-100 relative min-w-[50px]">
+                           <MapPin size={16} className="absolute inset-0 m-auto text-blue-600 bg-white" />
+                        </div>
                         <div className="text-center">
                           <p className="text-[10px] font-black text-slate-400 uppercase mb-1">إلى</p>
                           <p className="font-black text-xl">{load.destination}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="secondary" className="bg-slate-50">{load.weight} طن</Badge>
-                        <Badge variant="secondary" className="bg-slate-50">{load.package_type}</Badge>
+                      <div className="flex gap-2 justify-end">
+                        <Badge variant="secondary" className="bg-slate-100 font-bold">الوزن: {load.weight} طن</Badge>
+                        <Badge variant="secondary" className="bg-slate-100 font-bold">{load.package_type || 'بضائع'}</Badge>
                       </div>
                     </div>
-                    <div className="md:w-64 flex flex-col justify-between items-end border-r pr-8">
-                      <p className="text-3xl font-black text-blue-600">{load.price} <span className="text-sm">ر.س</span></p>
-                      <Button onClick={() => handleAcceptLoad(load.id)} className="w-full h-14 rounded-2xl bg-slate-900 font-black text-lg text-white">قبول الشحنة</Button>
+                    <div className="md:w-64 flex flex-col justify-between items-end md:border-r md:pr-8">
+                      <div className="text-right w-full">
+                        <p className="text-xs font-bold text-slate-400">الأجرة</p>
+                        <p className="text-3xl font-black text-blue-600">{load.price} <span className="text-sm">ر.س</span></p>
+                      </div>
+                      <Button onClick={() => handleAcceptLoad(load.id)} className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg">قبول الشحنة</Button>
                     </div>
                   </div>
                 </CardContent>
