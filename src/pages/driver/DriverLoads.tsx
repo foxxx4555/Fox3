@@ -5,13 +5,17 @@ import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Package, Phone, MessageCircle, X, CheckCircle2, AlertTriangle, Weight, Banknote, Calendar, Truck, Info, User } from 'lucide-react';
+import { 
+  Loader2, MapPin, Package, Phone, MessageCircle, X, 
+  CheckCircle2, AlertTriangle, Info, Weight, 
+  Banknote, Calendar, Truck, User
+} from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function DriverLoads() {
-  const { userProfile } = useAuth();
+  const { userProfile } = userProfile();
   const [loads, setLoads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLoad, setSelectedLoad] = useState<any>(null);
@@ -27,32 +31,33 @@ export default function DriverLoads() {
 
   useEffect(() => {
     fetchLoads();
-    const channel = supabase.channel('public-market').on('postgres_changes', { event: '*', table: 'loads' }, () => fetchLoads()).subscribe();
+    const channel = supabase.channel('loads-sync').on('postgres_changes', { event: '*', table: 'loads' }, () => fetchLoads()).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
-
-  const handleAgree = async () => {
-    if (!selectedLoad || !userProfile?.id) return;
-    try {
-      await api.acceptLoad(selectedLoad.id, userProfile.id);
-      toast.success("تم نقل الشحنة إلى مهامي ✅");
-      setShowSurvey(false); setSelectedLoad(null); fetchLoads();
-    } catch (err) { toast.error("فشل في القبول"); }
-  };
 
   const handleWhatsApp = (load: any) => {
     const phone = load.owner?.phone;
     if (!phone) return;
     const cleanPhone = phone.startsWith('05') ? '966' + phone.slice(1) : phone;
-    const msg = `السلام عليكم، أنا ناقل ومهتم بشحنتك من ${load.origin} إلى ${load.destination}. هل لا تزال متاحة؟`;
+    const msg = `السلام عليكم، أنا ناقل من تطبيق SAS ومهتم بنقل شحنتك:\n📍 من: ${load.origin}\n🏁 إلى: ${load.destination}\n📦 النوع: ${load.package_type}\n⚖️ الوزن: ${load.weight} طن.\nهل لا تزال متاحة؟`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     setTimeout(() => { setSelectedLoad(null); setShowSurvey(true); }, 2000);
+  };
+
+  const handleAgree = async () => {
+    if (!selectedLoad) return;
+    try {
+      await api.acceptLoad(selectedLoad.id, userProfile.id);
+      toast.success("تم الاتفاق! الشحنة الآن في قائمة مهامي ✅");
+      setShowSurvey(false); setSelectedLoad(null); fetchLoads();
+    } catch (err) { toast.error("خطأ في التحديث"); }
   };
 
   return (
     <AppLayout>
       <div className="space-y-8 max-w-4xl mx-auto pb-20">
-        <h1 className="text-3xl font-black text-slate-900 text-right">البحث عن عمل</h1>
+        <h1 className="text-3xl font-black text-slate-900 text-right">الشحنات المتاحة</h1>
+        
         {loading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={48} /></div> : (
           <div className="grid gap-6">
             {loads.map((load) => (
@@ -79,15 +84,10 @@ export default function DriverLoads() {
           <DialogContent className="max-w-2xl rounded-[3rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
             <div className="p-6 bg-[#0f172a] text-white flex justify-between items-center">
                <h2 className="text-xl font-black">تفاصيل الحمولة الكاملة</h2>
-               <Button variant="ghost" size="icon" onClick={() => setSelectedLoad(null)} className="text-white hover:bg-white/20"><X /></Button>
+               <Button variant="ghost" size="icon" onClick={() => setSelectedLoad(null)} className="text-white hover:bg-white/10 rounded-full"><X /></Button>
             </div>
             {selectedLoad && (
               <div className="p-8 space-y-8 max-h-[85vh] overflow-y-auto">
-                <div className="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 flex justify-between items-center">
-                    <div className="text-center flex-1"><p className="text-2xl font-black">{selectedLoad.origin}</p><p className="text-[10px] text-blue-600 font-black">التحميل</p></div>
-                    <div className="flex flex-col items-center px-6"><Badge className="bg-blue-600 mb-2">{selectedLoad.distance || '---'} كم</Badge><div className="w-24 h-0.5 bg-blue-200 border-dashed border-t-2" /></div>
-                    <div className="text-center flex-1"><p className="text-2xl font-black">{selectedLoad.destination}</p><p className="text-[10px] text-blue-600 font-black">التفريغ</p></div>
-                </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="p-4 rounded-3xl bg-slate-50 border flex flex-col items-center gap-1"><Weight className="text-slate-400" size={20}/><p className="text-[9px] font-black text-slate-400 uppercase">الوزن</p><p className="font-black">{selectedLoad.weight} طن</p></div>
                   <div className="p-4 rounded-3xl bg-slate-50 border flex flex-col items-center gap-1"><Truck className="text-slate-400" size={20}/><p className="text-[9px] font-black text-slate-400 uppercase">الشاحنة</p><p className="font-black text-sm">{selectedLoad.body_type || 'مسطحة'}</p></div>
@@ -114,8 +114,7 @@ export default function DriverLoads() {
 
         <Dialog open={showSurvey} onOpenChange={setShowSurvey}>
           <DialogContent className="max-w-md rounded-[3rem] p-8 text-center bg-white shadow-2xl">
-             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"><Info /></div>
-             <h3 className="text-xl font-black mb-6">هل تم الاتفاق مع التاجر؟</h3>
+             <h3 className="text-xl font-black mb-6">هل تم الاتفاق مع التاجر في SAS؟</h3>
              <div className="space-y-3">
                 <Button className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black" onClick={handleAgree}>نعم، تم الاتفاق بنجاح ✅</Button>
                 <Button variant="outline" className="w-full h-14 rounded-2xl border-2 font-bold" onClick={() => setShowSurvey(false)}>لا، لم يتم الاتفاق</Button>
