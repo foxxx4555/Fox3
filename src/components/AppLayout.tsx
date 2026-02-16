@@ -19,7 +19,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isAllNotifsOpen, setIsAllNotifsOpen] = useState(false); // حالة نافذة "عرض المزيد"
+  const [isAllNotifsOpen, setIsAllNotifsOpen] = useState(false);
 
   const fetchInitialNotifications = async () => {
     if (!userProfile?.id) return;
@@ -48,7 +48,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     await supabase.from('notifications').update({ is_read: true }).eq('user_id', userProfile.id);
   };
 
-  // دالة حذف إشعار واحد
   const deleteNotif = async (id: string) => {
     const success = await api.deleteNotification(id);
     if (success) {
@@ -57,7 +56,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  // دالة مسح الكل
   const clearAll = async () => {
     if (!userProfile?.id) return;
     if (!confirm("هل أنت متأكد من مسح جميع الإشعارات؟")) return;
@@ -83,6 +81,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       { label: "البحث عن عمل", path: '/driver/loads', icon: <Search size={20} /> },
       { label: "مهامي", path: '/driver/tasks', icon: <Truck size={20} /> },
       { label: "شاحناتي", path: '/driver/trucks', icon: <Truck size={20} /> },
+      // ✅ تم إضافة السطر الناقص هنا
+      { label: "سجل الرحلات", path: '/driver/history', icon: <History size={20} /> }, 
       { label: "حسابي", path: '/driver/account', icon: <Settings size={20} /> },
     ];
     return items;
@@ -149,7 +149,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* نافذة جميع الإشعارات ✅ */}
         <Dialog open={isAllNotifsOpen} onOpenChange={setIsAllNotifsOpen}>
            <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none bg-white">
               <DialogHeader className="p-6 bg-[#0f172a] text-white flex flex-row items-center justify-between">
