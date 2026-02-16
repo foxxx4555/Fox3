@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LayoutDashboard, Package, Truck, Users, Settings, LogOut, FileText, Plus, Menu, X, Bell, Search, History, Check, Trash2, Volume2 } from 'lucide-react';
@@ -19,14 +19,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAllNotifsOpen, setIsAllNotifsOpen] = useState(false);
+  
+  // مرجع لتخزين صوت التنبيه لضمان سرعة الاستجابة
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // دالة النطق الصوتي الآلي (عربي)
-  const speakNotification = (text: string) => {
+  // دالة النطق الصوتي (Text-to-Speech)
+  const speakNotification = (title: string, message: string) => {
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ar-SA'; // اللغة العربية
-      utterance.rate = 0.9; // سرعة الكلام
-      utterance.pitch = 1.0; 
+      // نلغي أي كلام شغال حالياً عشان ميتداخلش
+      window.speechSynthesis.cancel();
+      
+      const textToSpeak = `${title}. ${message}`;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'ar-SA';
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -41,10 +48,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userProfile?.id) return;
     
+    // تجهيز كائن الصوت مسبقاً
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.load();
+
     fetchInitialNotifications();
 
-    // إعداد قنوات الاستماع اللحظي (Realtime)
-    const channel = supabase.channel(`notifs-${userProfile.id}`)
+    // الاستماع اللحظي الفوري
+    const channel = supabase.channel(`realtime-notifs-${userProfile.id}`)
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -55,25 +66,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         (payload) => {
           const newNotif = payload.new;
           
-          // 1. تحديث القائمة فوراً
+          // 1. تحديث الواجهة فوراً
           setNotifications(prev => [newNotif, ...prev]);
           setUnreadCount(prev => prev + 1);
 
-          // 2. تشغيل صوت تنبيه قوي
-          const alertSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-          alertSound.play().catch(() => console.log("التفاعل مطلوب لتشغيل الصوت"));
+          // 2. تشغيل صوت الرنة (بأقصى قوة)
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => {
+              console.log("برجاء الضغط في أي مكان في الصفحة لتفعيل التنبيهات الصوتية");
+            });
+          }
 
-          // 3. النطق الصوتي (بيقول للتاجر اللي حصل)
-          speakNotification(`${newNotif.title}. ${newNotif.message}`);
+          // 3. نطق الإشعار صوتياً
+          speakNotification(newNotif.title, newNotif.message);
 
-          // 4. إظهار الإشعار المرئي
+          // 4. إظهار رسالة التنبيه (Toast)
           toast.success(newNotif.title, {
             description: newNotif.message,
-            duration: 6000,
+            duration: 8000,
           });
 
           // 5. اهتزاز الموبايل
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
       })
       .subscribe();
 
@@ -96,12 +111,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const clearAll = async () => {
     if (!userProfile?.id) return;
-    if (!confirm("هل أنت متأكد من مسح جميع الإشعارات؟")) return;
+    if (!confirm("هل أنت متأكد من مسح سجل الإشعارات؟")) return;
     const success = await api.clearAllNotifications(userProfile.id);
     if (success) {
       setNotifications([]);
       setUnreadCount(0);
-      toast.success("تم مسح السجل بالكامل");
+      toast.success("تم مسح السجل");
     }
   };
 
@@ -127,7 +142,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-slate-50 w-full overflow-x-hidden" dir="rtl">
-      {/* Sidebar - القائمة الجانبية */}
+      {/* القائمة الجانبية */}
       <aside className={cn("fixed lg:static inset-y-0 right-0 z-50 w-72 bg-[#0f172a] text-white flex flex-col transition-transform duration-300", sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0")}>
         <div className="p-8 border-b border-white/5 flex justify-between items-center">
           <h1 className="font-black text-xl italic tracking-tighter">SAS TRANSPORT</h1>
@@ -135,19 +150,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {navItems.map((item) => (
-            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all", location.pathname === item.path ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:bg-white/5 hover:text-white")}>
+            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all", location.pathname === item.path ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:bg-white/5 hover:text-white")}>
               {item.icon} {item.label}
             </Link>
           ))}
         </nav>
         <div className="p-6 border-t border-white/5">
-          <Button variant="ghost" className="w-full justify-start gap-4 text-rose-400 font-black h-14 rounded-2xl hover:bg-rose-500/10 hover:text-rose-400" onClick={logout}>
+          <Button variant="ghost" className="w-full justify-start gap-4 text-rose-400 font-black h-14 rounded-2xl" onClick={logout}>
             <LogOut size={20} /> خروج
           </Button>
         </div>
       </aside>
 
-      {/* Main Content - المحتوى الرئيسي */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-20 bg-white border-b px-6 flex items-center justify-between shadow-sm shrink-0">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
@@ -158,11 +172,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
              <Popover onOpenChange={(open) => open && markAsRead()}>
                 <PopoverTrigger asChild>
                   <div className="relative cursor-pointer">
-                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl bg-slate-50 hover:bg-slate-100">
-                      <Bell size={22} className="text-slate-600" />
+                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl bg-slate-50">
+                      <Bell size={22} className={cn(unreadCount > 0 ? "text-blue-600" : "text-slate-600")} />
                     </Button>
                     {unreadCount > 0 && (
-                      <div className="absolute top-2 right-2 w-5 h-5 bg-rose-500 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-black animate-bounce shadow-sm">
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-rose-500 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-black animate-bounce">
                         {unreadCount}
                       </div>
                     )}
@@ -171,16 +185,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <PopoverContent className="w-80 p-0 rounded-[2rem] shadow-2xl border-none overflow-hidden bg-white" align="start">
                    <div className="p-5 bg-[#0f172a] text-white flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <Volume2 size={16} className="text-blue-400" />
-                        <p className="font-black text-sm">التنبيهات اللحظية</p>
+                        <Volume2 size={16} className="text-blue-400 animate-pulse" />
+                        <p className="font-black text-sm">التنبيهات المباشرة</p>
                       </div>
-                      <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-500 hover:bg-white/10 h-8 rounded-lg" onClick={clearAll}>
+                      <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-500 h-8" onClick={clearAll}>
                         <Trash2 size={16} />
                       </Button>
                    </div>
                    <ScrollArea className="h-[300px]">
                       {notifications.slice(0, 10).map((notif) => (
-                        <div key={notif.id} className="p-4 border-b border-slate-50 flex gap-3 group hover:bg-slate-50 transition-colors">
+                        <div key={notif.id} className="p-4 border-b border-slate-50 flex gap-3 group hover:bg-slate-50">
                            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", notif.is_read ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-600")}>
                               <Bell size={14}/>
                            </div>
@@ -193,43 +207,43 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                            </Button>
                         </div>
                       ))}
-                      {notifications.length === 0 && <div className="p-10 text-center text-slate-400 text-xs font-bold">لا توجد إشعارات حالياً</div>}
+                      {notifications.length === 0 && <div className="p-10 text-center text-slate-400 text-xs font-bold">لا يوجد تنبيهات</div>}
                    </ScrollArea>
                    {notifications.length > 0 && (
                      <div className="p-3 bg-slate-50 text-center border-t">
-                        <Button variant="link" className="text-blue-600 font-black text-xs" onClick={() => setIsAllNotifsOpen(true)}>عرض السجل بالكامل</Button>
+                        <Button variant="link" className="text-blue-600 font-black text-xs" onClick={() => setIsAllNotifsOpen(true)}>عرض السجل الكامل</Button>
                      </div>
                    )}
                 </PopoverContent>
              </Popover>
 
-             <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-lg shadow-inner">
+             <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-lg">
                {userProfile?.full_name?.charAt(0)}
              </div>
           </div>
         </header>
 
-        {/* حوار سجل الإشعارات الكامل */}
+        {/* ديالوج سجل التنبيهات */}
         <Dialog open={isAllNotifsOpen} onOpenChange={setIsAllNotifsOpen}>
            <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none bg-white shadow-2xl">
               <DialogHeader className="p-6 bg-[#0f172a] text-white flex flex-row items-center justify-between">
                  <div>
                     <DialogTitle className="text-xl font-black">سجل التنبيهات</DialogTitle>
-                    <DialogDescription className="text-slate-400 text-xs">إدارة ومسح كافة الإشعارات الواردة</DialogDescription>
+                    <DialogDescription className="text-slate-400 text-xs">إدارة كافة التنبيهات الواردة للنظام</DialogDescription>
                  </div>
-                 <Button variant="destructive" size="sm" className="rounded-xl h-10 gap-2 font-black shadow-lg" onClick={clearAll}>
+                 <Button variant="destructive" size="sm" className="rounded-xl h-10 gap-2 font-black" onClick={clearAll}>
                    <Trash2 size={16}/> مسح الكل
                  </Button>
               </DialogHeader>
               <ScrollArea className="h-[450px] p-4">
                  <div className="space-y-3">
                     {notifications.map((notif) => (
-                      <div key={notif.id} className="p-5 rounded-3xl bg-slate-50 border border-slate-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+                      <div key={notif.id} className="p-5 rounded-3xl bg-slate-50 border border-slate-100 flex items-start gap-4">
                          <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-blue-600 shrink-0 border border-slate-100"><Bell size={20}/></div>
                          <div className="flex-1 text-right">
                             <p className="font-black text-sm text-slate-800">{notif.title}</p>
-                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">{notif.message}</p>
-                            <p className="text-[9px] text-slate-400 font-bold mt-3 bg-white w-fit px-2 py-1 rounded-lg border border-slate-100">
+                            <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
+                            <p className="text-[9px] text-slate-400 font-bold mt-3">
                               {new Date(notif.created_at).toLocaleString('ar-SA')}
                             </p>
                          </div>
@@ -243,14 +257,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
            </DialogContent>
         </Dialog>
 
-        {/* منطقة عرض الصفحات */}
+        {/* محتوى الصفحة */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10 bg-[#f8fafc]">
           <AnimatePresence mode="wait">
             <motion.div 
               key={location.pathname} 
-              initial={{ opacity: 0, scale: 0.98 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 1.02 }}
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
               {children}
