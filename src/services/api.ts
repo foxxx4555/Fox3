@@ -96,7 +96,13 @@ export const api = {
       const { error } = await supabase.from('loads').update({ status: 'in_progress', driver_id: driverId, updated_at: new Date().toISOString() }).eq('id', loadId);
       if (error) throw error;
       if (load) {
-        await api.createNotification(load.owner_id, "✅ تم قبول شحنتك", `وافق ناقل على طلبك من ${load.origin}`, "accept");
+        // الرسالة الجديدة عند القبول
+        await api.createNotification(
+          load.owner_id, 
+          "✅ تم قبول شحنتك", 
+          `أبشرك، تم قبول طلبك من ${load.origin}، والناقل في طريقه إليك الآن.`, 
+          "accept"
+        );
       }
       return true;
     } catch (e) { return false; }
@@ -107,7 +113,13 @@ export const api = {
       const { data: load } = await supabase.from('loads').select('owner_id').eq('id', loadId).single();
       await supabase.from('loads').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', loadId);
       if (load) {
-        await api.createNotification(load.owner_id, "🏁 وصلت الشحنة", `تم تسليم شحنتك بنجاح.`, "complete");
+        // الرسالة الجديدة عند الوصول
+        await api.createNotification(
+          load.owner_id, 
+          "🏁 وصلت الشحنة بسلام", 
+          "تم بحمد الله تسليم شحنتك بنجاح في الوجهة المحددة. شكراً لاستخدامك SAS.", 
+          "complete"
+        );
       }
       return true;
     } catch (e) { return false; }
