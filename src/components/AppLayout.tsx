@@ -18,42 +18,30 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
-  // 🔊 نظام التحكم في الصوت
+  // 🔊 نظام الصوت المحلي
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
+  const audioEnabledRef = useRef(false); 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // دالة لتشغيل الصوت والنطق (Text-to-Speech)
-  const playNotificationEffects = (title: string) => {
-    if (!isAudioEnabled) return;
-
-    try {
-      // 1. تشغيل الرنة
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.log("Audio play blocked"));
-      }
-
-      // 2. النطق الصوتي (عربي)
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // إلغاء أي كلام سابق
-        const msg = new SpeechSynthesisUtterance(title);
-        msg.lang = 'ar-SA';
-        window.speechSynthesis.speak(msg);
-      }
-    } catch (err) {
-      console.error("Sound error:", err);
-    }
+  const fetchInitialNotifications = async () => {
+    if (!userProfile?.id) return;
+    const data = await api.getNotifications(userProfile.id);
+    setNotifications(data || []);
+    setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
   };
 
-  // دالة تفعيل الصوت (لازم المستخدم يدوس عليها مرة واحدة)
+  // دالة تفعيل الصوت (تقرأ الآن من ملفك المحلي في مجلد public)
   const handleEnableAudio = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      audioRef.current = new Audio('/notification.mp3'); // ينادي الملف من مجلد public مباشرة
+    }
     
-    // تشغيل تجريبي لفك قفل المتصفح
     audioRef.current.play().then(() => {
       audioRef.current?.pause();
+      audioRef.current!.currentTime = 0;
       setIsAudioEnabled(true);
-      toast.success("تم تفعيل نظام التنبيهات الصوتية 🔊");
+      audioEnabledRef.current = true;
+      toast.success("تم تفعيل التنبيهات الصوتية المحلية 🔊");
     }).catch(() => {
       toast.error("يرجى الضغط مرة أخرى لتفعيل الصوت");
     });
@@ -62,37 +50,40 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userProfile?.id) return;
     
-    // تجهيز كائن الصوت
-    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    audioRef.current.load();
-
-    const fetchInitialNotifications = async () => {
-      const data = await api.getNotifications(userProfile.id);
-      setNotifications(data || []);
-      setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
-    };
     fetchInitialNotifications();
 
-    // الاشتراك في التنبيهات اللحظية
-    const channel = supabase.channel(`notifs-realtime-${userProfile.id}`)
+    // استماع لحظي ثابت (Realtime)
+    const channel = supabase.channel(`notifs-stable-${userProfile.id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'notifications', 
         filter: `user_id=eq.${userProfile.id}` 
       }, (payload) => {
-        setNotifications(prev => [payload.new, ...prev]);
+        const newNotif = payload.new;
+        
+        // تحديث القائمة فوراً
+        setNotifications(prev => [newNotif, ...prev]);
         setUnreadCount(prev => prev + 1);
 
-        // تشغيل الصوت والنطق فوراً
-        playNotificationEffects(payload.new.title);
+        // تشغيل الرنة المحلية والنطق لو مفعلين
+        if (audioEnabledRef.current && audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+          
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(newNotif.title);
+            msg.lang = 'ar-SA';
+            window.speechSynthesis.speak(msg);
+          }
+        }
 
-        toast.success(payload.new.title, { description: payload.new.message });
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        toast.success(newNotif.title, { description: newNotif.message });
       }).subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userProfile?.id, isAudioEnabled]);
+  }, [userProfile?.id]);
 
   const markAsRead = async () => {
     if (!userProfile?.id) return;
@@ -108,6 +99,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setUnreadCount(0);
   };
 
+  // مصفوفة التنقل (المنيو)
   const navItems = currentRole === 'shipper' ? [
     { label: "الرئيسية", path: '/shipper/dashboard', icon: <LayoutDashboard size={20} /> },
     { label: "نشر شحنة", path: '/shipper/post', icon: <Plus size={20} /> },
@@ -126,7 +118,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-slate-50 w-full overflow-x-hidden" dir="rtl">
-      {/* القائمة الجانبية */}
+      {/* Sidebar الجانبي */}
       <aside className={cn("fixed lg:static inset-y-0 right-0 z-50 w-72 bg-[#0f172a] text-white flex flex-col transition-transform duration-300", sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0")}>
         <div className="p-8 border-b border-white/5 flex justify-between items-center">
           <h1 className="font-black text-xl italic tracking-tighter">SAS TRANSPORT</h1>
@@ -134,7 +126,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {navItems.map((item) => (
-            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all", location.pathname === item.path ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:bg-white/5 hover:text-white")}>
+            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all", location.pathname === item.path ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:bg-white/5 hover:text-white")}>
               {item.icon} {item.label}
             </Link>
           ))}
@@ -143,28 +135,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Header العلوي */}
         <header className="h-20 bg-white border-b px-6 flex items-center justify-between shadow-sm shrink-0">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}><Menu size={28} className="text-blue-600" /></Button>
           
           <div className="flex items-center gap-3">
-             {/* 🔊 زر تفعيل الصوت الذكي */}
-             <div className="relative">
-                {!isAudioEnabled && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-                  </span>
-                )}
-                <Button 
-                    variant={isAudioEnabled ? "ghost" : "destructive"} 
-                    size="icon" 
-                    className={cn("h-11 w-11 rounded-xl transition-all", isAudioEnabled ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600 shadow-md")}
-                    onClick={handleEnableAudio}
-                >
-                    {isAudioEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}
-                </Button>
-             </div>
+             {/* زر تفعيل الصوت الذكي */}
+             <Button 
+                variant={isAudioEnabled ? "ghost" : "destructive"} 
+                size="icon" 
+                className={cn("h-11 w-11 rounded-xl transition-all", isAudioEnabled ? "bg-emerald-50 text-emerald-600 shadow-none" : "bg-rose-50 text-rose-600 shadow-lg border-2 border-rose-200")}
+                onClick={handleEnableAudio}
+             >
+                {isAudioEnabled ? <Volume2 size={22} /> : <VolumeX size={22} className="animate-pulse" />}
+             </Button>
 
+             {/* أيقونة الجرس والإشعارات */}
              <Popover onOpenChange={(open) => open && markAsRead()}>
                 <PopoverTrigger asChild>
                   <div className="relative cursor-pointer">
@@ -181,10 +167,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                    </div>
                    <ScrollArea className="h-[300px]">
                       {notifications.length === 0 ? (
-                        <div className="p-10 text-center text-slate-400 text-xs font-bold">لا توجد تنبيهات</div>
+                        <div className="p-10 text-center text-slate-400 text-xs font-bold">لا يوجد تنبيهات</div>
                       ) : (
                         notifications.slice(0, 10).map((notif) => (
-                          <div key={notif.id} className="p-4 border-b border-slate-50 flex gap-3 hover:bg-slate-50">
+                          <div key={notif.id} className="p-4 border-b border-slate-50 flex gap-3 hover:bg-slate-50 transition-colors">
                              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", notif.is_read ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-600")}><Bell size={14}/></div>
                              <div className="flex-1 text-right">
                                 <p className="font-black text-[11px] text-slate-800">{notif.title}</p>
@@ -196,13 +182,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                    </ScrollArea>
                 </PopoverContent>
              </Popover>
-
              <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-lg shadow-inner">{userProfile?.full_name?.charAt(0)}</div>
           </div>
         </header>
 
+        {/* مساحة عرض المحتوى */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10 bg-[#f8fafc]">
-          <AnimatePresence mode="wait"><motion.div key={location.pathname} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }} transition={{ duration: 0.2 }}>{children}</motion.div></AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>
