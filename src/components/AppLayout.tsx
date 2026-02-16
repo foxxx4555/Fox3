@@ -18,7 +18,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
-  // 🔊 نظام الصوت الذكي
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const audioEnabledRef = useRef(false); 
 
@@ -29,17 +28,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
   };
 
-  // دالة تفعيل الصوت (لفك حظر المتصفح عند أول دخول)
+  // 🔊 دالة تشغيل الصوت الموحدة (سرعة استجابة عالية)
+  const playNotificationSound = (type: string) => {
+    if (!audioEnabledRef.current) return;
+
+    let soundFile = '/notification.mp3'; // الصوت الافتراضي
+    if (type === 'accept') soundFile = '/accept.mp3';
+    if (type === 'complete') soundFile = '/complete.mp3';
+    if (type === 'new_load') soundFile = '/new_load.mp3';
+
+    const audio = new Audio(soundFile);
+    audio.play().catch(e => console.log("Audio play blocked", e));
+  };
+
   const handleEnableAudio = () => {
-    // تشغيل صوت تجريبي بسيط لمرة واحدة لفك القفل
     const testAudio = new Audio('/accept.mp3');
     testAudio.play().then(() => {
       testAudio.pause();
       setIsAudioEnabled(true);
       audioEnabledRef.current = true;
-      toast.success("تم تفعيل نظام التنبيهات الصوتية الذكي 🔊");
+      toast.success("تم تفعيل نظام الرادار الصوتي 🔊");
     }).catch(() => {
-      toast.error("يرجى الضغط مرة أخرى لتفعيل الصوت");
+      toast.error("يرجى النقر مرة أخرى لتفعيل الصوت");
     });
   };
 
@@ -48,8 +58,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     
     fetchInitialNotifications();
 
-    // استماع لحظي ثابت لا ينقطع (Realtime)
-    const channel = supabase.channel(`notifs-stable-${userProfile.id}`)
+    // 1️⃣ استماع لإشعارات المستخدم الخاصة (للتاجر والسائق)
+    const personalChannel = supabase.channel(`user-notifs-${userProfile.id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
@@ -57,34 +67,37 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         filter: `user_id=eq.${userProfile.id}` 
       }, (payload) => {
         const newNotif = payload.new;
-        
-        // 1. تحديث قائمة الإشعارات فوراً
         setNotifications(prev => [newNotif, ...prev]);
         setUnreadCount(prev => prev + 1);
-
-        // 2. نظام تشغيل الصوت بناءً على نوع الإشعار (Type)
-        if (audioEnabledRef.current) {
-          let soundFile = '/accept.mp3'; // الافتراضي
-
-          // إذا كان نوع الإشعار "complete" شغل صوت الوصول
-          if (newNotif.type === 'complete') {
-            soundFile = '/complete.mp3';
-          } 
-          // إذا كان "accept" شغل صوت القبول
-          else if (newNotif.type === 'accept') {
-            soundFile = '/accept.mp3';
-          }
-
-          const notificationAudio = new Audio(soundFile);
-          notificationAudio.play().catch(e => console.log("Audio play blocked", e));
-        }
-
-        // إظهار التنبيه المرئي (Toast)
+        
+        // تشغيل الصوت بناءً على نوع الإشعار المسجل في القاعدة
+        playNotificationSound(newNotif.type);
         toast.success(newNotif.title, { description: newNotif.message });
       }).subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [userProfile?.id]);
+    // 2️⃣ رادار الشحنات الجديدة (خاص بالسائقين فقط)
+    let loadsChannel: any;
+    if (currentRole === 'driver') {
+      loadsChannel = supabase.channel('global-loads')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'loads' 
+        }, (payload) => {
+          // تشغيل صوت "شحنة جديدة" فوراً عند النشر
+          playNotificationSound('new_load');
+          toast.info("📦 شحنة جديدة متاحة الآن!", {
+            description: `من ${payload.new.origin} إلى ${payload.new.destination}`,
+            duration: 10000, // تظل 10 ثواني لينتبه السائق
+          });
+        }).subscribe();
+    }
+
+    return () => { 
+      supabase.removeChannel(personalChannel);
+      if (loadsChannel) supabase.removeChannel(loadsChannel);
+    };
+  }, [userProfile?.id, currentRole]);
 
   const markAsRead = async () => {
     if (!userProfile?.id) return;
@@ -118,6 +131,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-slate-50 w-full overflow-x-hidden" dir="rtl">
+      {/* Sidebar - Remains Same */}
       <aside className={cn("fixed lg:static inset-y-0 right-0 z-50 w-72 bg-[#0f172a] text-white flex flex-col transition-transform duration-300", sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0")}>
         <div className="p-8 border-b border-white/5 flex justify-between items-center">
           <h1 className="font-black text-xl italic tracking-tighter">SAS TRANSPORT</h1>
@@ -138,7 +152,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}><Menu size={28} className="text-blue-600" /></Button>
           
           <div className="flex items-center gap-3">
-             {/* زر تفعيل الصوت الاحترافي */}
+             {/* زر تفعيل الصوت الذكي */}
              <Button 
                 variant={isAudioEnabled ? "ghost" : "destructive"} 
                 size="icon" 
