@@ -18,10 +18,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
-  // 🔊 نظام الصوت المحلي
+  // 🔊 نظام الصوت الذكي
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const audioEnabledRef = useRef(false); 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchInitialNotifications = async () => {
     if (!userProfile?.id) return;
@@ -30,18 +29,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setUnreadCount(data?.filter((n: any) => !n.is_read).length || 0);
   };
 
-  // دالة تفعيل الصوت (تقرأ الآن من ملفك المحلي في مجلد public)
+  // دالة تفعيل الصوت (لفك حظر المتصفح عند أول دخول)
   const handleEnableAudio = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio('/notification.mp3'); // ينادي الملف من مجلد public مباشرة
-    }
-    
-    audioRef.current.play().then(() => {
-      audioRef.current?.pause();
-      audioRef.current!.currentTime = 0;
+    // تشغيل صوت تجريبي بسيط لمرة واحدة لفك القفل
+    const testAudio = new Audio('/accept.mp3');
+    testAudio.play().then(() => {
+      testAudio.pause();
       setIsAudioEnabled(true);
       audioEnabledRef.current = true;
-      toast.success("تم تفعيل التنبيهات الصوتية المحلية 🔊");
+      toast.success("تم تفعيل نظام التنبيهات الصوتية الذكي 🔊");
     }).catch(() => {
       toast.error("يرجى الضغط مرة أخرى لتفعيل الصوت");
     });
@@ -52,7 +48,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     
     fetchInitialNotifications();
 
-    // استماع لحظي ثابت (Realtime)
+    // استماع لحظي ثابت لا ينقطع (Realtime)
     const channel = supabase.channel(`notifs-stable-${userProfile.id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
@@ -62,23 +58,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       }, (payload) => {
         const newNotif = payload.new;
         
-        // تحديث القائمة فوراً
+        // 1. تحديث قائمة الإشعارات فوراً
         setNotifications(prev => [newNotif, ...prev]);
         setUnreadCount(prev => prev + 1);
 
-        // تشغيل الرنة المحلية والنطق لو مفعلين
-        if (audioEnabledRef.current && audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(() => {});
-          
-          if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(newNotif.title);
-            msg.lang = 'ar-SA';
-            window.speechSynthesis.speak(msg);
+        // 2. نظام تشغيل الصوت بناءً على نوع الإشعار (Type)
+        if (audioEnabledRef.current) {
+          let soundFile = '/accept.mp3'; // الافتراضي
+
+          // إذا كان نوع الإشعار "complete" شغل صوت الوصول
+          if (newNotif.type === 'complete') {
+            soundFile = '/complete.mp3';
+          } 
+          // إذا كان "accept" شغل صوت القبول
+          else if (newNotif.type === 'accept') {
+            soundFile = '/accept.mp3';
           }
+
+          const notificationAudio = new Audio(soundFile);
+          notificationAudio.play().catch(e => console.log("Audio play blocked", e));
         }
 
+        // إظهار التنبيه المرئي (Toast)
         toast.success(newNotif.title, { description: newNotif.message });
       }).subscribe();
 
@@ -99,7 +100,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setUnreadCount(0);
   };
 
-  // مصفوفة التنقل (المنيو)
   const navItems = currentRole === 'shipper' ? [
     { label: "الرئيسية", path: '/shipper/dashboard', icon: <LayoutDashboard size={20} /> },
     { label: "نشر شحنة", path: '/shipper/post', icon: <Plus size={20} /> },
@@ -118,7 +118,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-slate-50 w-full overflow-x-hidden" dir="rtl">
-      {/* Sidebar الجانبي */}
       <aside className={cn("fixed lg:static inset-y-0 right-0 z-50 w-72 bg-[#0f172a] text-white flex flex-col transition-transform duration-300", sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0")}>
         <div className="p-8 border-b border-white/5 flex justify-between items-center">
           <h1 className="font-black text-xl italic tracking-tighter">SAS TRANSPORT</h1>
@@ -126,7 +125,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {navItems.map((item) => (
-            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all", location.pathname === item.path ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:bg-white/5 hover:text-white")}>
+            <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all", location.pathname === item.path ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-slate-400 hover:bg-white/5 hover:text-white")}>
               {item.icon} {item.label}
             </Link>
           ))}
@@ -135,22 +134,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header العلوي */}
         <header className="h-20 bg-white border-b px-6 flex items-center justify-between shadow-sm shrink-0">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}><Menu size={28} className="text-blue-600" /></Button>
           
           <div className="flex items-center gap-3">
-             {/* زر تفعيل الصوت الذكي */}
+             {/* زر تفعيل الصوت الاحترافي */}
              <Button 
                 variant={isAudioEnabled ? "ghost" : "destructive"} 
                 size="icon" 
-                className={cn("h-11 w-11 rounded-xl transition-all", isAudioEnabled ? "bg-emerald-50 text-emerald-600 shadow-none" : "bg-rose-50 text-rose-600 shadow-lg border-2 border-rose-200")}
+                className={cn("h-11 w-11 rounded-xl transition-all", isAudioEnabled ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600 shadow-lg border-2 border-rose-200")}
                 onClick={handleEnableAudio}
              >
                 {isAudioEnabled ? <Volume2 size={22} /> : <VolumeX size={22} className="animate-pulse" />}
              </Button>
 
-             {/* أيقونة الجرس والإشعارات */}
              <Popover onOpenChange={(open) => open && markAsRead()}>
                 <PopoverTrigger asChild>
                   <div className="relative cursor-pointer">
@@ -186,19 +183,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* مساحة عرض المحتوى */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10 bg-[#f8fafc]">
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={location.pathname}
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {children}
         </div>
       </main>
     </div>
