@@ -8,12 +8,78 @@ const handleApiError = (err: any) => {
 };
 
 export const api = {
-  // --- المصادقة ---
+
+  // =========================
+  // 🔐 المصادقة
+  // =========================
+
+  // ✅ تسجيل مستخدم جديد + بيانات إضافية
+  async registerUser(
+    email: string,
+    password: string,
+    profile: { full_name: string; phone: string; role: UserRole }
+  ) {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: profile.full_name,
+            phone: profile.phone,
+            role: profile.role,
+          },
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      throw e;
+    }
+  },
+
+  // ✅ تأكيد كود OTP
+  async verifyEmailOtp(email: string, token: string) {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "email",
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      throw e;
+    }
+  },
+
+  // ✅ إعادة إرسال OTP
+  async resendOtp(email: string) {
+    try {
+      const { data, error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      throw e;
+    }
+  },
+
+  // تسجيل الدخول
   async loginByEmail(email: string, password: string) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      const { data: profile } = await supabase.from('profiles').select('*, user_roles(role)').eq('id', data.user.id).maybeSingle();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*, user_roles(role)')
+        .eq('id', data.user.id)
+        .maybeSingle();
       return { profile: profile as UserProfile, role: (profile?.user_roles?.[0]?.role || 'shipper') as UserRole };
     } catch (e) { throw e; }
   },
@@ -24,7 +90,9 @@ export const api = {
     } catch (e) { handleApiError(e); }
   },
 
-  // --- الإشعارات ---
+  // =========================
+  // 🔔 الإشعارات
+  // =========================
   async createNotification(userId: string, title: string, message: string, type: string) {
     try {
       await supabase.from('notifications').insert([{ user_id: userId, title, message, type }]);
@@ -39,43 +107,28 @@ export const api = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       return data || [];
-    } catch (e) { 
-      handleApiError(e);
-      return []; 
-    }
+    } catch (e) { handleApiError(e); return []; }
   },
 
-  // ✅ دالة حذف إشعار واحد
   async deleteNotification(id: string) {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('notifications').delete().eq('id', id);
       if (error) throw error;
       return true;
-    } catch (e) {
-      handleApiError(e);
-      return false;
-    }
+    } catch (e) { handleApiError(e); return false; }
   },
 
-  // ✅ دالة مسح جميع إشعارات المستخدم
   async clearAllNotifications(userId: string) {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', userId);
+      const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
       if (error) throw error;
       return true;
-    } catch (e) {
-      handleApiError(e);
-      return false;
-    }
+    } catch (e) { handleApiError(e); return false; }
   },
 
-  // --- إدارة الشحنات ---
+  // =========================
+  // 🚚 إدارة الشحنات
+  // =========================
   async postLoad(loadData: any, userId: string) {
     try {
       const { error } = await supabase.from('loads').insert([{ ...loadData, owner_id: userId, status: 'available' }]);
@@ -85,18 +138,25 @@ export const api = {
 
   async getAvailableLoads() {
     try {
-      const { data } = await supabase.from('loads').select(`*, owner:profiles!loads_owner_id_fkey (*)`).eq('status', 'available').order('created_at', { ascending: false });
+      const { data } = await supabase.from('loads')
+        .select(`*, owner:profiles!loads_owner_id_fkey (*)`)
+        .eq('status', 'available')
+        .order('created_at', { ascending: false });
       return data || [];
     } catch (e) { return []; }
   },
 
   async acceptLoad(loadId: string, driverId: string) {
     try {
-      const { data: load } = await supabase.from('loads').select('owner_id, origin').eq('id', loadId).single();
-      const { error } = await supabase.from('loads').update({ status: 'in_progress', driver_id: driverId, updated_at: new Date().toISOString() }).eq('id', loadId);
+      const { data: load } = await supabase.from('loads')
+        .select('owner_id, origin')
+        .eq('id', loadId)
+        .single();
+      const { error } = await supabase.from('loads')
+        .update({ status: 'in_progress', driver_id: driverId, updated_at: new Date().toISOString() })
+        .eq('id', loadId);
       if (error) throw error;
       if (load) {
-        // الرسالة الجديدة عند القبول
         await api.createNotification(
           load.owner_id, 
           "✅ تم قبول شحنتك", 
@@ -113,7 +173,6 @@ export const api = {
       const { data: load } = await supabase.from('loads').select('owner_id').eq('id', loadId).single();
       await supabase.from('loads').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', loadId);
       if (load) {
-        // الرسالة الجديدة عند الوصول
         await api.createNotification(
           load.owner_id, 
           "🏁 وصلت الشحنة بسلام", 
@@ -134,28 +193,31 @@ export const api = {
 
   async getUserLoads(userId: string) {
     try {
-      const { data } = await supabase.from('loads').select(`*, owner:profiles!loads_owner_id_fkey(*), driver:profiles!loads_driver_id_fkey(*)`).or(`owner_id.eq.${userId},driver_id.eq.${userId}`).order('created_at', { ascending: false });
+      const { data } = await supabase.from('loads')
+        .select(`*, owner:profiles!loads_owner_id_fkey(*), driver:profiles!loads_driver_id_fkey(*)`)
+        .or(`owner_id.eq.${userId},driver_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
       return data || [];
     } catch (e) { return []; }
   },
 
-  // --- إدارة السائقين ---
+  // =========================
+  // 👨‍✈️ إدارة السائقين
+  // =========================
   async getAvailableDrivers() {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*, user_roles!inner(role)')
         .eq('user_roles.role', 'driver');
-      
       if (error) throw error;
       return data || [];
-    } catch (e) {
-      handleApiError(e);
-      return [];
-    }
+    } catch (e) { handleApiError(e); return []; }
   },
 
-  // --- الإحصائيات ---
+  // =========================
+  // 📊 الإحصائيات
+  // =========================
   async getAdminStats(): Promise<AdminStats> {
     try {
       const { count: u } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
@@ -179,4 +241,5 @@ export const api = {
       return { activeLoads: a || 0, completedTrips: c || 0, rating: 4.9 };
     } catch (e) { return { activeLoads: 0, completedTrips: 0, rating: 0 }; }
   }
+
 };
