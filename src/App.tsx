@@ -5,23 +5,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 
-// الصفحات العامة
+// --- الصفحات العامة ---
 import WelcomePage from "./pages/WelcomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import NotFound from "./pages/NotFound";
 
-// صفحات السائق
+// --- صفحات السائق ---
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLoads from "./pages/driver/DriverLoads";
 import DriverTrucks from "./pages/driver/DriverTrucks"; 
 import DriverAccount from "./pages/driver/DriverAccount";
 import DriverTasks from "./pages/driver/DriverTasks"; 
 
-// صفحات التاجر
+// --- صفحات التاجر (الشاحن) ---
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
 import ShipperPostLoad from "./pages/shipper/ShipperPostLoad";
 import ShipperLoads from "./pages/shipper/ShipperLoads"; 
@@ -30,7 +30,7 @@ import ShipperHistory from "./pages/shipper/ShipperHistory";
 import ShipperTrack from "./pages/shipper/ShipperTrack";
 import ShipperAccount from "./pages/shipper/ShipperAccount";
 
-// صفحات الإدارة
+// --- صفحات الإدارة ---
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient({
@@ -46,8 +46,9 @@ const App = () => {
   const [systemActive, setSystemActive] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let isMounted = true; // حماية لمنع الـ AbortError عند إغلاق المكون
+    let isMounted = true;
 
+    // 🔒 فحص حالة النظام من سوبابيز (مفتاح الأمان)
     const checkStatus = async () => {
       try {
         const { data, error } = await supabase
@@ -56,7 +57,7 @@ const App = () => {
           .maybeSingle();
 
         if (isMounted) {
-          // لو الجدول مش موجود أو حصل خطأ بنخلي السيستم شغال افتراضياً
+          // لو القيمة false يقفل السيستم، لو true أو مش موجود يفتح عادي
           setSystemActive(data?.is_active ?? true);
         }
       } catch (e) { 
@@ -68,15 +69,36 @@ const App = () => {
     document.documentElement.dir = 'rtl';
     document.documentElement.lang = 'ar';
 
-    return () => {
-      isMounted = false; // تنظيف عند الخروج لمنع أي Abort Signal
-    };
+    return () => { isMounted = false; };
   }, []);
 
+  // 🛑 شاشة التوقف (تظهر فقط إذا جعلت is_active = false في سوبابيز)
+  if (systemActive === false) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-[#0a0c10] text-white p-6 text-center" dir="rtl">
+        <div className="bg-rose-500/10 p-6 rounded-full mb-6">
+          <ShieldAlert size={80} className="text-rose-500 animate-pulse" />
+        </div>
+        <h1 className="text-3xl font-black mb-4">النظام متوقف حالياً</h1>
+        <p className="text-slate-400 max-w-md leading-relaxed">
+          عذراً، انتهت الفترة التجريبية للنظام أو تم تعليق الصلاحية مؤقتاً. 
+          يرجى التواصل مع المطور (محمد) لتفعيل النظام ومتابعة العمل.
+        </p>
+        <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10 font-mono text-xs text-rose-400">
+          Error: LICENCE_EXPIRED_OR_SUSPENDED
+        </div>
+      </div>
+    );
+  }
+
+  // 🔄 شاشة التحميل عند فتح التطبيق
   if (systemActive === null) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0a0c10]">
-        <Loader2 className="animate-spin text-blue-600" size={48} />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-blue-600" size={48} />
+          <p className="text-white/50 font-bold animate-pulse">جاري فحص النظام...</p>
+        </div>
       </div>
     );
   }
@@ -87,20 +109,23 @@ const App = () => {
         <Sonner position="top-center" richColors />
         <BrowserRouter>
           <Routes>
+            {/* المسارات العامة */}
             <Route path="/" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
+            {/* المسارات المحمية (تحتاج تسجيل دخول) */}
             <Route element={<ProtectedRoute />}>
-              {/* مسارات السائق */}
+              
+              {/* --- قسم السائق --- */}
               <Route path="/driver/dashboard" element={<DriverDashboard />} />
               <Route path="/driver/loads" element={<DriverLoads />} />
               <Route path="/driver/tasks" element={<DriverTasks />} /> 
               <Route path="/driver/trucks" element={<DriverTrucks />} /> 
               <Route path="/driver/account" element={<DriverAccount />} />
 
-              {/* مسارات التاجر */}
+              {/* --- قسم التاجر (الشاحن) --- */}
               <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
               <Route path="/shipper/post" element={<ShipperPostLoad />} />
               <Route path="/shipper/loads" element={<ShipperLoads />} /> 
@@ -109,10 +134,12 @@ const App = () => {
               <Route path="/shipper/track" element={<ShipperTrack />} />
               <Route path="/shipper/account" element={<ShipperAccount />} />
 
-              {/* مسارات الإدارة */}
+              {/* --- قسم الإدارة --- */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              
             </Route>
 
+            {/* صفحة الخطأ 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
