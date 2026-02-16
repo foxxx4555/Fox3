@@ -127,6 +127,22 @@ export const api = {
     } catch (e) { return []; }
   },
 
+  // --- إدارة السائقين ---
+  async getAvailableDrivers() {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*, user_roles!inner(role)')
+        .eq('user_roles.role', 'driver');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      handleApiError(e);
+      return [];
+    }
+  },
+
   // --- الإحصائيات ---
   async getAdminStats(): Promise<AdminStats> {
     try {
