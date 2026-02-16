@@ -5,11 +5,13 @@ import "./index.css";
 
 // 🔐 نظام قفل الدومين (Domain Lock)
 const allowedDomains = [
-  "https://sas4pl.com/", // الدومين الجديد اللي هتركبه
-  "fox3-nu.vercel.app", // رابط فيرسل الحالي للتجربة
-  "localhost",         // عشان يفتح معاك وأنت شغال في الترمكس
+  "sas4pl.com",      // بدون https وبدون / في النهاية
+  "www.sas4pl.com",  // أضف هذه أيضاً احتياطاً
+  "fox3-nu.vercel.app",
+  "localhost",
   "127.0.0.1"
 ];
+
 
 if (!allowedDomains.includes(window.location.hostname)) {
   document.body.innerHTML = `
