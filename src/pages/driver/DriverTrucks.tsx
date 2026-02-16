@@ -17,15 +17,16 @@ export default function DriverTrucks() {
   const fetchTrucks = async () => {
     if (!userProfile?.id) return;
     try {
+      // ✅ تم التعديل هنا: استخدام owner_id بدلاً من driver_id
       const { data, error } = await supabase
         .from('trucks') 
         .select('*')
-        .eq('driver_id', userProfile.id);
+        .eq('owner_id', userProfile.id);
       
       if (error) throw error;
       setTrucks(data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Database Error:", err);
     } finally {
       setLoading(false);
     }
