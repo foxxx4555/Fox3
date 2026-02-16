@@ -7,8 +7,8 @@
     <meta name="description" content="SAS Transport - أسرع وأسهل طريقة لإدارة شحناتك ونقل بضائعك" />
     
     <!-- 🖼️ الأيقونة الجديدة PNG -->
-<link rel="icon" type="image/png" href="/favicon.png?v=2" />
-<link rel="apple-touch-icon" href="/favicon.png?v=2">
+    <link rel="icon" type="image/png" href="/favicon.png?v=2" />
+    <link rel="apple-touch-icon" href="/favicon.png?v=2">
 
     <!-- خط القاهرة للفخامة -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -81,6 +81,23 @@
 
   <body>
     <div id="root"></div>
+
+    <!-- 🛠️ أداة الفحص للموبايل (Eruda) -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+      // لا تظهر الأداة إلا في بيئة التطوير أو عند إضافة ?debug=true للرابط
+      if (window.location.search.includes('debug=true') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          eruda.init({
+              theme: 'dark',
+              defaults: {
+                  displaySize: 50,
+                  transparency: 0.9,
+                  theme: 'Monokai'
+              }
+          });
+          console.log("✅ Eruda Debugger Initialized");
+      }
+    </script>
 
     <!-- تحميل ملف المشروع الرئيسي -->
     <script type="module" src="/src/main.tsx"></script>
