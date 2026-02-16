@@ -1,92 +1,101 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { api } from '@/services/api';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MapPin, Phone, MessageCircle, X, CheckCircle2, Clock } from 'lucide-react';
+import { Loader2, Truck, Plus, Trash2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function DriverTasks() {
+export default function DriverTrucks() {
   const { userProfile } = useAuth();
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [trucks, setTrucks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTasks = async () => {
+  // جلب بيانات الشاحنات من جدول trucks
+  const fetchTrucks = async () => {
     if (!userProfile?.id) return;
     try {
-      const data = await api.getUserLoads(userProfile.id);
-      // فلترة الشحنات اللي "قيد التنفيذ" ومرتبطة بهذا السائق
-      setTasks(data.filter((l: any) => l.status === 'in_progress' && l.driver_id === userProfile.id));
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+      const { data, error } = await supabase
+        .from('trucks') 
+        .select('*')
+        .eq('driver_id', userProfile.id);
+      
+      if (error) throw error;
+      setTrucks(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchTasks();
-    const channel = supabase.channel('driver-tasks-sync').on('postgres_changes', { event: '*', table: 'loads' }, () => fetchTasks()).subscribe();
-    return () => { supabase.removeChannel(channel); };
+    fetchTrucks();
   }, [userProfile?.id]);
 
-  const handleComplete = async (id: string) => {
-    if (!confirm("هل تم تسليم الشحنة بنجاح؟")) return;
+  const handleDelete = async (id: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذه الشاحنة؟")) return;
     try {
-      await api.completeLoad(id);
-      toast.success("تم إنهاء الرحلة بنجاح 🏁");
-      fetchTasks();
-    } catch (e) { toast.error("فشل التحديث"); }
-  };
-
-  const handleCancel = async (id: string) => {
-    if (!confirm("هل تريد إلغاء المهمة وإعادتها للسوق العام؟")) return;
-    try {
-      await api.cancelLoad(id);
-      toast.info("تم إلغاء المهمة");
-      fetchTasks();
-    } catch (e) { toast.error("فشل الإلغاء"); }
+      const { error } = await supabase.from('trucks').delete().eq('id', id);
+      if (error) throw error;
+      toast.success("تم حذف الشاحنة بنجاح");
+      fetchTrucks();
+    } catch (e) {
+      toast.error("فشل الحذف");
+    }
   };
 
   return (
     <AppLayout>
       <div className="space-y-8 max-w-4xl mx-auto pb-20">
-        <h1 className="text-3xl font-black text-slate-900 text-right">مهامي الحالية</h1>
-        {loading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={48} /></div> : tasks.length === 0 ? (
-          <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-400 font-bold">
-            <Clock size={64} className="mx-auto mb-4 opacity-20" />
-            <p>لا توجد مهام نشطة حالياً</p>
+        <div className="flex justify-between items-center px-4">
+          <Button className="rounded-2xl bg-blue-600 hover:bg-blue-700 h-12 px-6 gap-2 shadow-lg shadow-blue-100 font-bold">
+            <Plus size={20} /> إضافة شاحنة جديدة
+          </Button>
+          <h1 className="text-3xl font-black text-slate-900 text-right">شاحناتي</h1>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-blue-600" size={48} />
+          </div>
+        ) : trucks.length === 0 ? (
+          <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-slate-400 font-bold mx-4">
+            <Truck size={64} className="mx-auto mb-4 opacity-20" />
+            <p>لا توجد شاحنات مسجلة حالياً</p>
+            <p className="text-sm font-medium mt-2">قم بإضافة شاحنتك لتبدأ في استقبال الطلبات</p>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-6 px-4">
             <AnimatePresence>
-              {tasks.map((task) => (
-                <motion.div key={task.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                  <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden relative">
-                    <Button variant="ghost" size="icon" className="absolute top-4 left-4 h-10 w-10 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white" onClick={() => handleCancel(task.id)}>
-                      <X size={20} />
-                    </Button>
-                    <CardContent className="p-8">
-                      <div className="flex flex-col md:flex-row justify-between gap-8">
-                        <div className="flex-1 space-y-6">
-                          <div className="flex items-center gap-4 justify-end">
-                            <p className="font-black text-xl">{task.origin}</p>
-                            <div className="flex-1 h-px bg-blue-100 relative min-w-[60px]"><MapPin size={16} className="absolute inset-0 m-auto text-blue-600 bg-white" /></div>
-                            <p className="font-black text-xl">{task.destination}</p>
-                          </div>
-                          <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center">
-                             <p className="font-black text-slate-700">{task.owner?.full_name}</p>
-                             <div className="flex gap-2">
-                                <Button size="icon" className="rounded-full bg-blue-600" onClick={() => window.location.href=`tel:${task.owner?.phone}`}><Phone size={18}/></Button>
-                                <Button size="icon" className="rounded-full bg-emerald-500" onClick={() => window.open(`https://wa.me/966${task.owner?.phone?.slice(1)}`, '_blank')}><MessageCircle size={18}/></Button>
-                             </div>
-                          </div>
-                        </div>
-                        <div className="md:w-56 flex flex-col gap-3 justify-center md:border-r md:pr-6 text-center">
-                           <p className="text-3xl font-black text-blue-600">{task.price} <span className="text-sm">ريال</span></p>
-                           <Button onClick={() => handleComplete(task.id)} className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg gap-2 shadow-lg shadow-emerald-100">
-                             <CheckCircle2 size={22} /> إنهاء الرحلة
+              {trucks.map((truck) => (
+                <motion.div key={truck.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+                  <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden border-r-8 border-r-blue-500">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-2">
+                           <Button 
+                             variant="ghost" size="icon" 
+                             className="h-12 w-12 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white"
+                             onClick={() => handleDelete(truck.id)}
+                           >
+                             <Trash2 size={20} />
                            </Button>
+                        </div>
+
+                        <div className="text-right flex items-center gap-5">
+                          <div>
+                            <div className="flex items-center gap-2 justify-end mb-1">
+                              <ShieldCheck size={16} className="text-emerald-500" />
+                              <p className="font-black text-2xl text-slate-800">{truck.plate_number}</p>
+                            </div>
+                            <p className="text-slate-500 font-bold">{truck.truck_type} - {truck.capacity} طن</p>
+                          </div>
+                          <div className="p-5 bg-blue-50 text-blue-600 rounded-[2rem]">
+                            <Truck size={35} />
+                          </div>
                         </div>
                       </div>
                     </CardContent>
