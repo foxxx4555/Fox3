@@ -83,20 +83,20 @@
     <div id="root"></div>
 
     <!-- 🛠️ أداة الفحص للموبايل (Eruda) -->
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>
-      // لا تظهر الأداة إلا في بيئة التطوير أو عند إضافة ?debug=true للرابط
-      if (window.location.search.includes('debug=true') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          eruda.init({
-              theme: 'dark',
-              defaults: {
-                  displaySize: 50,
-                  transparency: 0.9,
-                  theme: 'Monokai'
-              }
-          });
-          console.log("✅ Eruda Debugger Initialized");
-      }
+    <!-- أداة الفحص للموبايل (Eruda) - نسخة الإظهار الإجباري -->
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+    eruda.init({
+        theme: 'dark',
+        defaults: {
+            displaySize: 50,
+            transparency: 0.9,
+            theme: 'Monokai'
+        }
+    });
+    // دي عشان تتأكد إن الكود اشتغل، هتلاقي رسالة في الـ Console العادي
+    console.log("Eruda is active!"); 
+
     </script>
 
     <!-- تحميل ملف المشروع الرئيسي -->
