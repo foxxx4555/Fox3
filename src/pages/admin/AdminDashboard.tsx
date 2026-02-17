@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/services/api';
-import AdminLayout from '@/components/AdminLayout';
+import AdminLayout from '@/components/AdminLayout'; // تأكد أن المسار صحيح
 import StatCard from '@/components/StatCard';
 import {
   Users,
@@ -78,7 +78,7 @@ function AdminDashboard() {
   }, []);
 
   return (
-    <AdminLayout.tsx>
+    <AdminLayout> {/* ✅ تم حذف .tsx من هنا */}
       <div className="space-y-10">
         <div className="flex items-center justify-between">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
@@ -169,7 +169,7 @@ function AdminDashboard() {
           </Card>
         </div>
       </div>
-    </AdminLayout.tsx>
+    </AdminLayout> {/* ✅ تم حذف .tsx من هنا */}
   );
 }
 
