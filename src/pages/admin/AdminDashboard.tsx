@@ -1,123 +1,208 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { api } from '@/services/api';
-import AppLayout from '@/components/AppLayout';
-import StatCard from '@/components/StatCard';
-import { Users, Package, Truck, CheckCircle, ShieldCheck, Activity, BarChart3, AlertCircle } from 'lucide-react';
-import { AdminStats } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-
 import { supabase } from '@/integrations/supabase/client';
+import { UserProfile, AdminStats, UserRole } from '@/types';
 
-export default function AdminDashboard() {
-  const { t } = useTranslation();
-  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalDrivers: 0, totalShippers: 0, activeLoads: 0, completedTrips: 0 });
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+// 🛑 معالج أخطاء لتنظيف الـ Console من الرسائل التقنية المزعجة
+const handleApiError = (err: any) => {
+  if (err.name === 'AbortError' || err.message?.includes('aborted')) return null;
+  console.error("⚠️ API Error:", err.message || err);
+  throw err;
+};
 
-  const fetchData = async () => {
+export const api = {
+  // =========================
+  // 🔐 المصادقة (Auth)
+  // =========================
+
+  async loginByEmail(email: string, password: string) {
     try {
-      const [s, t] = await Promise.all([api.getAdminStats(), api.getTickets()]);
-      setStats(s);
-      setAlerts(t.slice(0, 4));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      const { data: profile } = await supabase.from('profiles').select('*, user_roles(role)').eq('id', data.user.id).maybeSingle();
+      return { 
+        profile: profile as UserProfile, 
+        role: (profile?.user_roles?.[0]?.role || 'shipper') as UserRole 
+      };
+    } catch (e) { throw e; }
+  },
+
+  async loginAdmin(email: string, password: string) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      // التأكد من صلاحية الأدمن
+      const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle();
+      if (!roleData || roleData.role !== 'admin') {
+        await supabase.auth.signOut();
+        throw new Error("عذراً، هذا الحساب لا يملك صلاحيات الإدارة.");
+      }
+      return data;
+    } catch (e) { throw e; }
+  },
+
+  async registerUser(email: string, password: string, profile: { full_name: string; phone: string; role: UserRole }) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: profile.full_name, phone: profile.phone, role: profile.role } },
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async verifyEmailOtp(email: string, token: string) {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    if (error) throw error;
+    return data;
+  },
+
+  async resendOtp(email: string) {
+    await supabase.auth.resend({ type: "signup", email });
+  },
+
+  // =========================
+  // 🔔 نظام الإشعارات (Live)
+  // =========================
+  
+  async createNotification(userId: string, title: string, message: string, type: 'accept' | 'complete' | 'new_load' | 'system') {
+    try {
+      await supabase.from('notifications').insert([{ user_id: userId, title, message, type }]);
+    } catch (e) { handleApiError(e); }
+  },
+
+  async getNotifications(userId: string) {
+    const { data } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  async clearAllNotifications(userId: string) {
+    await supabase.from('notifications').delete().eq('user_id', userId);
+  },
+
+  // =========================
+  // 🚚 إدارة الشحنات
+  // =========================
+  
+  async postLoad(loadData: any, userId: string) {
+    const { data, error } = await supabase.from('loads').insert([{ ...loadData, owner_id: userId, status: 'available' }]).select().single();
+    if (error) throw error;
+
+    // رادار حي: إخطار السائقين بوجود شحنة جديدة
+    const { data: drivers } = await supabase.from('user_roles').select('user_id').eq('role', 'driver');
+    if (drivers) {
+      const bulkNotifs = drivers.map(d => ({
+        user_id: d.user_id,
+        title: "📦 شحنة جديدة متاحة!",
+        message: `حمل جديد من ${loadData.origin} بـ ${loadData.price} ريال`,
+        type: 'new_load'
+      }));
+      await supabase.from('notifications').insert(bulkNotifs);
     }
-  };
+    return data;
+  },
 
-  useEffect(() => {
-    fetchData();
+  async acceptLoad(loadId: string, driverId: string) {
+    const { data: load } = await supabase.from('loads').select('owner_id, origin').eq('id', loadId).single();
+    await supabase.from('loads').update({ status: 'in_progress', driver_id: driverId, updated_at: new Date().toISOString() }).eq('id', loadId);
+    if (load) {
+      await this.createNotification(load.owner_id, "✅ تم قبول شحنتك", `الناقل في طريقه إليك الآن.`, 'accept');
+    }
+    return true;
+  },
 
-    // Refresh on any load change or ticket change
-    const channel = supabase
-      .channel('admin-refresh')
-      .on('postgres_changes', { event: '*', table: 'loads', schema: 'public' }, () => fetchData())
-      .on('postgres_changes', { event: '*', table: 'support_tickets', schema: 'public' }, () => fetchData())
-      .subscribe();
+  async completeLoad(loadId: string) {
+    const { data: load } = await supabase.from('loads').select('owner_id').eq('id', loadId).single();
+    await supabase.from('loads').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', loadId);
+    if (load) {
+      await this.createNotification(load.owner_id, "🏁 وصلت الشحنة بسلام", "تم تسليم الشحنة بنجاح. شكراً لك.", 'complete');
+    }
+    return true;
+  },
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  async cancelLoad(loadId: string) {
+    await supabase.from('loads').update({ status: 'available', driver_id: null }).eq('id', loadId);
+    return true;
+  },
 
-  return (
-    <AppLayout>
-      <div className="space-y-10">
-        <div className="flex items-center justify-between">
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-            <h1 className="text-4xl font-black tracking-tight flex items-center gap-4">
-              <ShieldCheck className="text-primary" size={40} strokeWidth={2.5} />
-              {t('dashboard')} الإدارة
-            </h1>
-            <p className="text-muted-foreground font-medium text-lg mt-2">نظرة عامة على حالة النظام وأداء العمليات الحية</p>
-          </motion.div>
+  // =========================
+  // 👑 وظائف الإدارة (Admin) - حل المشكلة الأساسية
+  // =========================
 
-          <Button className="h-12 px-6 rounded-2xl bg-slate-900 font-bold shadow-xl shadow-slate-900/10 gap-2">
-            <BarChart3 size={20} /> تصدير التقارير
-          </Button>
-        </div>
+  async getAdminStats(): Promise<AdminStats> {
+    try {
+      const { count: u } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      const { count: l } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('status', 'in_progress');
+      const { count: d } = await supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'driver');
+      const { count: s } = await supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'shipper');
+      
+      return { 
+        totalUsers: u || 0, 
+        totalDrivers: d || 0, 
+        totalShippers: s || 0, 
+        activeLoads: l || 0, 
+        completedTrips: 0 
+      };
+    } catch (e) { 
+      return { totalUsers: 0, totalDrivers: 0, totalShippers: 0, activeLoads: 0, completedTrips: 0 }; 
+    }
+  },
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title={t('total_users')} value={stats.totalUsers} icon={<Users size={28} />} color="primary" />
-          <StatCard title={t('total_drivers')} value={stats.totalDrivers} icon={<Truck size={28} />} color="accent" />
-          <StatCard title={t('total_shippers')} value={stats.totalShippers} icon={<Package size={28} />} color="secondary" />
-          <StatCard title={t('active_loads')} value={stats.activeLoads} icon={<Activity size={28} />} color="destructive" />
-        </div>
+  async getTickets() {
+    try {
+      const { data, error } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return []; }
+  },
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-2 rounded-[2.5rem] shadow-2xl border-none p-8 overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] -z-10" />
-            <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between pb-8">
-              <div>
-                <CardTitle className="text-2xl font-black">تحليل العمليات</CardTitle>
-                <CardDescription className="font-medium text-base">معدل نمو الطلبات والمستخدمين الجدد</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="px-0 h-[300px] flex items-center justify-center border-2 border-dashed border-border rounded-[2rem] bg-muted/20">
-              <div className="text-center space-y-4">
-                <BarChart3 className="mx-auto text-muted-foreground/20" size={64} />
-                <p className="font-bold text-muted-foreground">مخطط البيانات سيظهر هنا عند توفر المزيد من العمليات</p>
-              </div>
-            </CardContent>
-          </Card>
+  async getAllUsers() {
+    try {
+      const { data, error } = await supabase.from('profiles').select('*, user_roles(role)').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return []; }
+  },
 
-          <Card className="rounded-[2.5rem] shadow-2xl border-none p-8 bg-slate-950 text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -z-10" />
-            <CardHeader className="px-0 pt-0">
-              <CardTitle className="text-2xl font-black flex items-center gap-3">
-                <AlertCircle className="text-destructive" />
-                بلاغات الدعم
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-0 space-y-4 mt-4">
-              {alerts.length > 0 ? alerts.map((alert, i) => (
-                <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer group">
-                  <div className={cn(
-                    "w-1.5 h-10 rounded-full",
-                    alert.status === 'open' ? "bg-destructive" : "bg-emerald-500"
-                  )} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{alert.subject || 'بلاغ رقم ' + alert.id.slice(0, 5)}</p>
-                    <p className="text-[10px] font-medium opacity-50 mt-1 uppercase tracking-wider">{new Date(alert.created_at).toLocaleString('ar')}</p>
-                  </div>
-                </div>
-              )) : (
-                <div className="text-center py-10 opacity-40">
-                  <p className="font-bold">لا يوجد بلاغات حالية</p>
-                </div>
-              )}
-              <Button variant="ghost" className="w-full h-12 rounded-xl text-white/40 hover:text-white hover:bg-white/5 font-bold mt-4">
-                مشاهدة جميع البلاغات
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </AppLayout>
-  );
-}
+  async getAllLoads() {
+    try {
+      const { data, error } = await supabase.from('loads').select(`*, owner:profiles!loads_owner_id_fkey(*), driver:profiles!loads_driver_id_fkey(*)`).order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return []; }
+  },
+
+  // =========================
+  // 📈 وظائف الجلب الأخرى
+  // =========================
+
+  async getShipperStats(userId: string) {
+    const { count: a } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('owner_id', userId).eq('status', 'in_progress');
+    const { count: c } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('owner_id', userId).eq('status', 'completed');
+    return { activeLoads: a || 0, completedTrips: c || 0 };
+  },
+
+  async getDriverStats(userId: string) {
+    const { count: a } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('driver_id', userId).eq('status', 'in_progress');
+    const { count: c } = await supabase.from('loads').select('*', { count: 'exact', head: true }).eq('driver_id', userId).eq('status', 'completed');
+    return { activeLoads: a || 0, completedTrips: c || 0, rating: 4.9 };
+  },
+
+  async getAvailableLoads() {
+    const { data } = await supabase.from('loads').select(`*, owner:profiles!loads_owner_id_fkey (*)`).eq('status', 'available').order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  async getUserLoads(userId: string) {
+    const { data } = await supabase.from('loads').select(`*, owner:profiles!loads_owner_id_fkey(*), driver:profiles!loads_driver_id_fkey(*)`).or(`owner_id.eq.${userId},driver_id.eq.${userId}`).order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  async getAvailableDrivers() {
+    const { data } = await supabase.from('profiles').select('*, user_roles!inner(role)').eq('user_roles.role', 'driver');
+    return data || [];
+  },
+
+  async updateProfile(userId: string, updates: any) {
+    await supabase.from('profiles').update(updates).eq('id', userId);
+  }
+};
