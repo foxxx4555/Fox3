@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/services/api';
-import AppLayout from '@/components/AdminLayout.tsx';
+import AdminLayout from '@/components/AdminLayout';
 import StatCard from '@/components/StatCard';
 import {
   Users,
