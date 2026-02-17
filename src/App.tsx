@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ShieldAlert } from 'lucide-react';
@@ -137,7 +137,11 @@ const App = () => {
               <Route path="/shipper/account" element={<ShipperAccount />} />
 
               {/* --- قسم الإدارة --- */}
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminDashboard />} />
+              <Route path="/admin/loads" element={<AdminDashboard />} />
+              <Route path="/admin/settings" element={<AdminDashboard />} />
               
             </Route>
 
