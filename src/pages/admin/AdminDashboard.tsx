@@ -78,7 +78,7 @@ function AdminDashboard() {
   }, []);
 
   return (
-    <AdminLayout> 
+    <AdminLayout>
       <div className="space-y-10">
         <div className="flex items-center justify-between">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
@@ -91,7 +91,7 @@ function AdminDashboard() {
             </p>
           </motion.div>
 
-          <Button className="h-12 px-6 rounded-2xl bg-slate-900 font-bold shadow-xl gap-2">
+          <Button className="h-12 px-6 rounded-2xl bg-slate-900 text-white font-bold shadow-xl gap-2">
             <BarChart3 size={20} />
             تصدير التقارير
           </Button>
@@ -126,7 +126,7 @@ function AdminDashboard() {
           <Card className="rounded-[2.5rem] shadow-2xl border-none p-8 bg-slate-950 text-white">
             <CardHeader className="px-0 pt-0">
               <CardTitle className="text-2xl font-black flex items-center gap-3">
-                <AlertCircle className="text-destructive" />
+                <AlertCircle className="text-rose-500" />
                 بلاغات الدعم
               </CardTitle>
             </CardHeader>
@@ -142,7 +142,7 @@ function AdminDashboard() {
                       className={cn(
                         'w-1.5 h-10 rounded-full',
                         alert.status === 'open'
-                          ? 'bg-destructive'
+                          ? 'bg-rose-500'
                           : 'bg-emerald-500'
                       )}
                     />
@@ -162,14 +162,14 @@ function AdminDashboard() {
                 </p>
               )}
 
-              <Button variant="ghost" className="w-full mt-4">
+              <Button variant="ghost" className="w-full mt-4 text-white hover:bg-white/10">
                 مشاهدة جميع البلاغات
               </Button>
             </CardContent>
           </Card>
         </div>
       </div>
-    </AdminLayout> 
+    </AdminLayout>
   );
 }
 
