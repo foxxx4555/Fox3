@@ -20,7 +20,7 @@ import DriverLoads from "./pages/driver/DriverLoads";
 import DriverTrucks from "./pages/driver/DriverTrucks"; 
 import DriverAccount from "./pages/driver/DriverAccount";
 import DriverTasks from "./pages/driver/DriverTasks"; 
-import DriverHistory from "./pages/driver/DriverHistory"; // ✅ تمت إضافة الاستيراد هنا
+import DriverHistory from "./pages/driver/DriverHistory";
 
 // --- صفحات التاجر (الشاحن) ---
 import ShipperDashboard from "./pages/shipper/ShipperDashboard";
@@ -124,7 +124,7 @@ const App = () => {
               <Route path="/driver/loads" element={<DriverLoads />} />
               <Route path="/driver/tasks" element={<DriverTasks />} /> 
               <Route path="/driver/trucks" element={<DriverTrucks />} /> 
-              <Route path="/driver/history" element={<DriverHistory />} /> {/* ✅ تم تفعيل المسار هنا */}
+              <Route path="/driver/history" element={<DriverHistory />} />
               <Route path="/driver/account" element={<DriverAccount />} />
 
               {/* --- قسم التاجر (الشاحن) --- */}
